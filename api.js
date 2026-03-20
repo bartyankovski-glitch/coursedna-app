@@ -1,6 +1,7 @@
+
 import express from "express";
 import { createId, db } from "./db.js";
-import { generateCovers } from "./openaiImageService.js";
+import { generateCovers } from "./coverService.js";
 import { recordEvent, getScoreState, getScoreHistory } from "./scoringService.js";
 
 const router = express.Router();
@@ -36,7 +37,9 @@ router.post("/cover-events", express.json(), (req, res) => {
 
 router.get("/cover-score/:cacheKey", (req, res) => {
   const state = getScoreState(req.params.cacheKey);
-  if (!state) return res.status(404).json({ error: "Score state not found" });
+  if (!state) {
+    return res.status(404).json({ error: "Score state not found" });
+  }
   res.json(state);
 });
 
