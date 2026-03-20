@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Self Service Pack</title>
+<style>
+:root{
+  --bg:#f6f9fc;--card:#fff;--text:#0a2540;--muted:#425466;--line:#e6ebf1;
+  --blue:#635bff;--blue2:#0a84ff;--green:#0a7a5c;--shadow:0 12px 32px rgba(10,37,64,.08)
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(180deg,#f6f9fc 0%,#eef4fb 100%);color:var(--text)}
+.wrap{max-width:980px;margin:0 auto;padding:28px 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:24px}
+h1{margin:0 0 10px;font-size:38px;line-height:1.04}
+p{margin:0 0 12px;color:var(--muted);font-size:17px;line-height:1.65}
+.status,.box{margin-top:14px;padding:12px;border:1px solid #eaf0f7;background:#f9fbff;border-radius:14px;color:var(--muted);font-size:14px;line-height:1.5}
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:14px 18px;border:none;border-radius:999px;font-weight:700;cursor:pointer;text-decoration:none}
+.btn.primary{background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff}
+.btn.secondary{background:#fff;border:1px solid var(--line);color:var(--text)}
+.list{margin:14px 0 0;padding-left:18px;color:var(--text)}
+.small{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>Ścieżka samodzielna została uruchomiona</h1>
+    <p>To jest ekran dla użytkownika, który wybrał rozwój książki samodzielnie. Tutaj można dostarczyć pakiet materiałów, checklistę i dalsze wskazówki.</p>
+    <div class="status" id="runtime">Ładowanie danych runtime...</div>
+    
+<div class="box">
+  <strong>Pakiet self-service może zawierać:</strong>
+  <ul class="list">
+    <li>strukturę książki</li>
+    <li>propozycję rozdziałów</li>
+    <li>szablon pracy nad treścią</li>
+  </ul>
+</div>
+<div class="actions">
+  <a class="btn primary" href="#" onclick="sendEvent('self_service_pack_opened',{screen:'self_service_pack'});return false;">Otwórz pakiet materiałów</a>
+</div>
+
+    <div class="actions">
+      <a class="btn secondary" href="offer_async_onboarding_connected.html">Wróć do offer page</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const qs = new URLSearchParams(window.location.search);
+const cacheKey = qs.get("cacheKey") || "demo";
+const userId = qs.get("userId") || "user_demo";
+const briefId = qs.get("briefId") || "";
+const nextAction = qs.get("nextAction") || "";
+const pathType = qs.get("path") || "";
+const segment = qs.get("segment") || "";
+const score = qs.get("score") || "";
+
+function fillRuntime(){
+  const el = document.getElementById("runtime");
+  if(!el) return;
+  el.innerHTML = `
+    cacheKey: <strong>${cacheKey}</strong><br>
+    userId: <strong>${userId}</strong><br>
+    briefId: <strong>${briefId || "-"}</strong><br>
+    nextAction: <strong>${nextAction || "-"}</strong><br>
+    path: <strong>${pathType || "-"}</strong><br>
+    segment: <strong>${segment || "-"}</strong><br>
+    score: <strong>${score || "-"}</strong>
+  `;
+}
+
+async function sendEvent(eventType, metadata = {}){
+  try{
+    await fetch("/api/cover-events", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        userId,
+        cacheKey,
+        eventType,
+        briefId,
+        metadata
+      })
+    });
+  } catch(e){}
+}
+
+fillRuntime();
+</script>
+
+<script>sendEvent('workflow_page_viewed',{screen:'self_service_pack.html'});</script>
+</body>
+</html>

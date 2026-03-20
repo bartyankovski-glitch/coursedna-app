@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preview</title>
+<style>
+:root{--bg:#f6f9fc;--card:#fff;--text:#0a2540;--muted:#425466;--line:#e6ebf1;--blue:#635bff;--blue2:#0a84ff;--shadow:0 12px 32px rgba(10,37,64,.08);--red:#b42318;--redbg:#fef3f2}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(180deg,#f6f9fc 0%,#eef4fb 100%);color:var(--text)}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 18px}
+.card{background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:24px}
+.grid{display:grid;grid-template-columns:320px 1fr;gap:18px}
+label{display:block;margin:0 0 8px;font-size:13px;font-weight:700;text-transform:uppercase;color:#5b687c}
+input,select{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:14px;margin-bottom:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:14px 18px;border:none;border-radius:999px;font-weight:700;cursor:pointer;text-decoration:none}
+.primary{background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff}
+.secondary{background:#fff;border:1px solid var(--line);color:var(--text)}
+.hero{display:grid;grid-template-columns:260px 1fr;gap:20px;align-items:center}
+.cover{width:100%;border-radius:18px;background:#f8fbff}
+.status{margin-top:14px;padding:12px;border:1px solid #eaf0f7;background:#f9fbff;border-radius:14px;color:var(--muted);font-size:14px}
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}
+.error{display:none;margin-top:14px;padding:12px;border:1px solid #fecdca;background:var(--redbg);border-radius:14px;color:var(--red);font-size:14px}
+.small{color:var(--muted);font-size:13px}
+@media(max-width:980px){.grid,.hero{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="grid">
+    <div class="card">
+      <label>User ID</label>
+      <input id="userId" value="user_001">
+      <label>Autor</label>
+      <input id="authorName" value="Dariusz Skraskowski">
+      <label>Tytuł książki</label>
+      <input id="bookTitle" value="Jak opanować stres, prowadzić lepsze rozmowy i działać skuteczniej">
+      <label>Podtytuł</label>
+      <input id="bookSubtitle" value="Praktyczna psychologia rozmowy, działania i wpływu">
+      <label>Kategoria</label>
+      <input id="primaryCategory" value="psychologia sprzedaży">
+      <label>Ton</label>
+      <select id="tone">
+        <option value="premium">premium</option>
+        <option value="clean">clean</option>
+        <option value="performance">performance</option>
+      </select>
+      <label>Język</label>
+      <select id="language">
+        <option value="pl">pl</option>
+        <option value="ru">ru</option>
+        <option value="en">en</option>
+      </select>
+      <button class="btn primary" id="generateBtn">Generuj preview</button>
+      <div class="small" style="margin-top:12px;">Jeśli OpenAI nie odpowie, system pokaże cover z fallback gradient.</div>
+    </div>
+
+    <div class="card">
+      <div class="hero">
+        <img id="coverImg" class="cover" alt="cover">
+        <div>
+          <h1 id="titleOut">Twoja książka</h1>
+          <p id="subtitleOut">Podtytuł</p>
+          <p>Preview wysyła eventy i aktualizuje score.</p>
+          <div class="actions">
+            <button class="btn secondary" id="previewBtn">preview_viewed</button>
+            <button class="btn secondary" id="selectBtn">cover_selected</button>
+            <button class="btn secondary" id="ctaBtn">cta_clicked</button>
+            <a class="btn primary" id="offerLink" href="#">Przejdź do offer</a>
+          </div>
+        </div>
+      </div>
+      <div class="status" id="status">Ładowanie...</div>
+      <div class="error" id="errorBox"></div>
+    </div>
+  </div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+let currentCacheKey = null;
+let currentUserId = "user_001";
+let currentStyleId = null;
+
+function showError(message){
+  const box = $("errorBox");
+  box.style.display = "block";
+  box.textContent = message;
+}
+function clearError(){
+  const box = $("errorBox");
+  box.style.display = "none";
+  box.textContent = "";
+}
+
+function renderStatus(state, cacheHit, hasAiBackground = null){
+  $("status").innerHTML = `
+    cacheKey: <strong>${currentCacheKey || "-"}</strong><br>
+    cacheHit: <strong>${cacheHit === null ? "-" : (cacheHit ? "TAK" : "NIE")}</strong><br>
+    selectedStyleId: <strong>${state?.selectedStyleId || currentStyleId || "-"}</strong><br>
+    finalScore: <strong>${state?.finalScore ?? "-"}</strong><br>
+    segment: <strong>${state?.segment || "-"}</strong><br>
+    nextAction: <strong>${state?.nextAction || "-"}</strong><br>
+    AI background: <strong>${hasAiBackground === null ? "-" : (hasAiBackground ? "TAK" : "fallback")}</strong>
+  `;
+}
+
+async function sendEvent(eventType, extra = {}){
+  if (!currentCacheKey) return;
+  try{
+    const res = await fetch("/api/cover-events", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        userId: currentUserId,
+        cacheKey: currentCacheKey,
+        eventType,
+        styleId: extra.styleId || currentStyleId,
+        ctaId: extra.ctaId || null,
+        metadata: extra.metadata || {}
+      })
+    });
+    if(!res.ok) throw new Error("Event API error");
+    const data = await res.json();
+    renderStatus(data.state, null);
+  } catch(e){
+    showError("Nie udało się zapisać eventu. Interfejs działa dalej, ale scoring może się nie zaktualizować.");
+  }
+}
+
+async function generate(){
+  clearError();
+  currentUserId = $("userId").value;
+  const payload = {
+    userId: currentUserId,
+    authorName: $("authorName").value,
+    bookTitle: $("bookTitle").value,
+    bookSubtitle: $("bookSubtitle").value,
+    primaryCategory: $("primaryCategory").value,
+    tone: $("tone").value,
+    language: $("language").value
+  };
+
+  try{
+    const res = await fetch("/api/covers/generate", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+    if(!res.ok) throw new Error("Cover API error");
+    const data = await res.json();
+
+    currentCacheKey = data.cacheKey;
+    currentStyleId = data.covers?.[0]?.styleId || null;
+    $("titleOut").textContent = payload.bookTitle;
+    $("subtitleOut").textContent = payload.bookSubtitle;
+    $("coverImg").src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(data.covers[0].svg);
+    $("offerLink").href = `offer_async_onboarding_connected.html?cacheKey=${encodeURIComponent(currentCacheKey)}&userId=${encodeURIComponent(currentUserId)}`;
+
+    renderStatus(null, data.cacheHit, data.covers?.[0]?.hasAiBackground ?? null);
+    await sendEvent(data.cacheHit ? "cover_cache_hit" : "cover_generated");
+  } catch(e){
+    showError("Nie udało się wygenerować preview. Sprawdź ustawienia API albo spróbuj ponownie.");
+  }
+}
+$("generateBtn").addEventListener("click", generate);
+$("previewBtn").addEventListener("click", () => sendEvent("preview_viewed", {metadata:{scrollDepth:78,timeOnPageSec:92}}));
+$("selectBtn").addEventListener("click", () => sendEvent("cover_selected", {styleId: currentStyleId, metadata:{styleRank:1}}));
+$("ctaBtn").addEventListener("click", () => sendEvent("cta_clicked", {ctaId:"develop_with_us"}));
+generate();
+</script>
+</body>
+</html>

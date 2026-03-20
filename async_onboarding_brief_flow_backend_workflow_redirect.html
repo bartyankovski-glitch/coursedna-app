@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Async Onboarding / Brief — backend + workflow + real routing</title>
+<style>
+:root{
+  --bg:#f6f9fc;--card:#fff;--text:#0a2540;--muted:#425466;--line:#e6ebf1;
+  --blue:#635bff;--blue2:#0a84ff;--green:#0a7a5c;--shadow:0 12px 32px rgba(10,37,64,.08)
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(180deg,#f6f9fc 0%,#eef4fb 100%);color:var(--text)}
+.wrap{max-width:980px;margin:0 auto;padding:28px 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:24px}
+.hero{margin-bottom:18px}
+h1{margin:0 0 10px;font-size:38px;line-height:1.04}
+.sub{margin:0;color:var(--muted);font-size:18px;line-height:1.6;max-width:760px}
+.status{margin-top:14px;padding:12px;border:1px solid #eaf0f7;background:#f9fbff;border-radius:14px;color:var(--muted);font-size:14px;line-height:1.5}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.field{margin-bottom:14px}
+label{display:block;margin-bottom:8px;font-size:13px;font-weight:700;color:#5b687c;text-transform:uppercase;letter-spacing:.06em}
+input,select,textarea{width:100%;padding:14px;border:1px solid var(--line);border-radius:14px;font-size:15px;color:var(--text);background:#fff}
+textarea{min-height:120px;resize:vertical}
+.section-title{margin:0 0 14px;font-size:24px;letter-spacing:-.02em}
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:14px 18px;border:none;border-radius:999px;font-weight:700;cursor:pointer}
+.btn.primary{background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff}
+.btn.secondary{background:#fff;border:1px solid var(--line);color:var(--text)}
+.success{display:none;margin-top:18px;padding:16px;border:1px solid rgba(10,122,92,.18);background:rgba(10,122,92,.06);border-radius:16px}
+.success strong{display:block;margin-bottom:6px;color:var(--green)}
+.small{font-size:13px;color:var(--muted)}
+pre{white-space:pre-wrap;word-break:break-word;background:#fff;border:1px solid rgba(10,122,92,.12);padding:12px;border-radius:14px;color:#234}
+.route-map{margin-top:16px;padding:12px;border:1px dashed #d7deea;border-radius:14px;background:#fcfdff;color:#425466;font-size:13px;line-height:1.5}
+@media(max-width:800px){.grid{grid-template-columns:1fr}h1{font-size:32px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <h1>Async Onboarding / Brief — backend + workflow + real routing</h1>
+    <p class="sub">Ta wersja po zapisaniu briefu uruchamia workflow i zamiast alertów robi prawdziwe przejście na stronę zależną od <code>nextAction</code>.</p>
+  </div>
+
+  <div class="card">
+    <div class="status" id="runtimeStatus">Ładowanie stanu...</div>
+
+    <form id="briefForm">
+      <h2 class="section-title">1. Kierunek książki</h2>
+      <div class="grid">
+        <div class="field">
+          <label for="authorName">Autor</label>
+          <input id="authorName" name="authorName" value="Dariusz Skraskowski">
+        </div>
+        <div class="field">
+          <label for="bookTitle">Tytuł roboczy</label>
+          <input id="bookTitle" name="bookTitle" value="Jak opanować stres, prowadzić lepsze rozmowy i działać skuteczniej">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="goal">Jaki jest główny cel tej książki?</label>
+        <textarea id="goal" name="goal"></textarea>
+      </div>
+
+      <div class="grid">
+        <div class="field">
+          <label for="audience">Dla kogo jest książka?</label>
+          <input id="audience" name="audience">
+        </div>
+        <div class="field">
+          <label for="language">Język</label>
+          <select id="language" name="language">
+            <option value="pl">PL</option>
+            <option value="ru">RU</option>
+            <option value="en">EN</option>
+          </select>
+        </div>
+      </div>
+
+      <h2 class="section-title">2. Materiały wejściowe</h2>
+      <div class="field">
+        <label for="sources">Jakie materiały już istnieją?</label>
+        <textarea id="sources" name="sources"></textarea>
+      </div>
+
+      <div class="grid">
+        <div class="field">
+          <label for="tone">Ton książki</label>
+          <select id="tone" name="tone">
+            <option value="premium">premium</option>
+            <option value="clean">clean</option>
+            <option value="authority">authority</option>
+            <option value="performance">performance</option>
+            <option value="calm">calm</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="deadline">Termin / priorytet</label>
+          <select id="deadline" name="deadline">
+            <option value="soon">wkrótce</option>
+            <option value="this_quarter">ten kwartał</option>
+            <option value="no_rush">bez pośpiechu</option>
+          </select>
+        </div>
+      </div>
+
+      <h2 class="section-title">3. Ścieżka współpracy</h2>
+      <div class="grid">
+        <div class="field">
+          <label for="path">Wybrana ścieżka</label>
+          <select id="path" name="path">
+            <option value="with_us">rozwijam książkę razem z Wami</option>
+            <option value="self">rozwijam książkę samodzielnie</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="email">Email kontaktowy</label>
+          <input id="email" name="email" type="email">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="notes">Dodatkowe uwagi</label>
+        <textarea id="notes" name="notes"></textarea>
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="btn primary">Zapisz brief + uruchom workflow →</button>
+        <button type="button" class="btn secondary" id="saveDraftBtn">Zapisz szkic lokalnie</button>
+      </div>
+      <div class="small">Po zapisie backend zwraca briefId, a workflow endpoint zwraca gotowy workflow state z CRM, CourseDNA i next_action.</div>
+    </form>
+
+    <div class="success" id="successBox">
+      <strong>Brief zapisany i workflow uruchomiony.</strong>
+      <div id="successText"></div>
+      <pre id="workflowDump"></pre>
+      <div class="route-map" id="routeMapBox"></div>
+      <div class="actions">
+        <button class="btn primary" id="nextStepBtn" type="button">Przejdź do następnego kroku</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const qs = new URLSearchParams(window.location.search);
+const cacheKey = qs.get("cacheKey") || "demo";
+const userId = qs.get("userId") || "user_demo";
+const pathFromUrl = qs.get("path") || "with_us";
+let currentState = null;
+let savedBriefId = null;
+let workflowState = null;
+
+const ROUTE_MAP = {
+  priority_async_onboarding: "priority_async_onboarding.html",
+  assign_onboarding_queue: "onboarding_queue.html",
+  send_self_service_pack: "self_service_pack.html",
+  send_followup_email: "followup_nurture.html",
+  light_nurture: "light_nurture.html"
+};
+
+async function fetchScoreState(){
+  try{
+    const res = await fetch("/api/cover-score/" + cacheKey);
+    if(!res.ok) throw new Error("Brak score state");
+    currentState = await res.json();
+    document.getElementById("runtimeStatus").innerHTML = `
+      cacheKey: <strong>${cacheKey}</strong><br>
+      segment: <strong>${currentState.segment || "-"}</strong><br>
+      nextAction: <strong>${currentState.nextAction || "-"}</strong><br>
+      finalScore: <strong>${currentState.finalScore ?? "-"}</strong>
+    `;
+  } catch(err){
+    document.getElementById("runtimeStatus").innerHTML = `
+      cacheKey: <strong>${cacheKey}</strong><br>
+      segment: <strong>brak danych</strong><br>
+      nextAction: <strong>fallback</strong><br>
+      finalScore: <strong>-</strong>
+    `;
+  }
+}
+
+async function sendEvent(eventType, extra = {}){
+  try{
+    await fetch("/api/cover-events", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        userId,
+        cacheKey,
+        eventType,
+        styleId: currentState?.selectedStyleId || null,
+        briefId: extra.briefId || null,
+        metadata: extra.metadata || {}
+      })
+    });
+  } catch(e){}
+}
+
+function saveLocalDraft(){
+  const formData = Object.fromEntries(new FormData(document.getElementById("briefForm")).entries());
+  localStorage.setItem("async_brief_" + cacheKey, JSON.stringify({
+    cacheKey, userId, savedAt: new Date().toISOString(), data: formData
+  }));
+}
+
+function loadLocalDraft(){
+  const raw = localStorage.getItem("async_brief_" + cacheKey);
+  if(!raw) return;
+  try{
+    const parsed = JSON.parse(raw);
+    for(const [key, value] of Object.entries(parsed.data || {})){
+      const el = document.querySelector(`[name="${key}"]`);
+      if(el) el.value = value;
+    }
+  } catch(e){}
+}
+
+async function saveBriefToBackend(formData){
+  const payload = {
+    userId,
+    cacheKey,
+    path: formData.path,
+    authorName: formData.authorName,
+    bookTitle: formData.bookTitle,
+    goal: formData.goal,
+    audience: formData.audience,
+    language: formData.language,
+    sources: formData.sources,
+    tone: formData.tone,
+    deadline: formData.deadline,
+    email: formData.email,
+    notes: formData.notes,
+    selectedStyleId: currentState?.selectedStyleId || null,
+    scoreSnapshot: currentState || null
+  };
+
+  const res = await fetch("/api/briefs", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify(payload)
+  });
+
+  if(!res.ok) throw new Error("Nie udało się zapisać briefu");
+  return await res.json();
+}
+
+async function triggerWorkflow(){
+  const res = await fetch("/api/workflow/brief-completed", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({
+      briefId: savedBriefId,
+      cacheKey,
+      userId,
+      selectedStyleId: currentState?.selectedStyleId || null
+    })
+  });
+
+  if(!res.ok) throw new Error("Nie udało się uruchomić workflow");
+  return await res.json();
+}
+
+function buildNextStepUrl(nextAction){
+  const file = ROUTE_MAP[nextAction] || ROUTE_MAP.light_nurture;
+  const params = new URLSearchParams({
+    cacheKey,
+    userId,
+    briefId: savedBriefId || "",
+    nextAction: nextAction || "",
+    path: document.getElementById("path").value || "",
+    segment: workflowState?.workflow?.segment || currentState?.segment || "",
+    score: String(workflowState?.workflow?.score ?? currentState?.finalScore ?? "")
+  });
+  return `${file}?${params.toString()}`;
+}
+
+function renderRouteMap(nextAction){
+  const url = buildNextStepUrl(nextAction);
+  document.getElementById("routeMapBox").innerHTML = `
+    nextAction: <strong>${nextAction || "-"}</strong><br>
+    target: <strong>${ROUTE_MAP[nextAction] || ROUTE_MAP.light_nurture}</strong><br>
+    final URL: <strong>${url}</strong>
+  `;
+}
+
+async function nextStepRouting(){
+  const nextAction = workflowState?.workflow?.nextAction || currentState?.nextAction || "light_nurture";
+  await sendEvent("workflow_next_step_redirect", {
+    briefId: savedBriefId,
+    metadata: { nextAction }
+  });
+  window.location.href = buildNextStepUrl(nextAction);
+}
+
+document.getElementById("saveDraftBtn").addEventListener("click", async () => {
+  saveLocalDraft();
+  await sendEvent("brief_draft_saved", { metadata: { source: "local_storage" } });
+  alert("Szkic zapisany lokalnie.");
+});
+
+document.getElementById("briefForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const formData = Object.fromEntries(new FormData(e.target).entries());
+  saveLocalDraft();
+
+  await sendEvent("brief_started", {
+    briefId: "brief_" + cacheKey,
+    metadata: { selectedPath: formData.path, language: formData.language }
+  });
+
+  const saveResult = await saveBriefToBackend(formData);
+  savedBriefId = saveResult.briefId;
+
+  await sendEvent("brief_completed", {
+    briefId: savedBriefId,
+    metadata: {
+      selectedPath: formData.path,
+      emailProvided: Boolean(formData.email),
+      tone: formData.tone,
+      deadline: formData.deadline
+    }
+  });
+
+  workflowState = await triggerWorkflow();
+
+  document.getElementById("briefForm").style.display = "none";
+  document.getElementById("successBox").style.display = "block";
+  document.getElementById("successText").innerHTML = `
+    briefId: <strong>${savedBriefId}</strong><br>
+    cacheKey: <strong>${cacheKey}</strong><br>
+    Ścieżka: <strong>${formData.path}</strong><br>
+    Workflow został uruchomiony i zwrócił gotowy next_action.
+  `;
+  document.getElementById("workflowDump").textContent = JSON.stringify(workflowState, null, 2);
+  renderRouteMap(workflowState?.workflow?.nextAction || currentState?.nextAction || "light_nurture");
+});
+
+document.getElementById("nextStepBtn").addEventListener("click", nextStepRouting);
+
+(async function init(){
+  document.getElementById("path").value = pathFromUrl;
+  await fetchScoreState();
+  loadLocalDraft();
+  await sendEvent("async_onboarding_started", {
+    metadata: { page: "brief_async_onboarding_backend_workflow_redirect", path: pathFromUrl }
+  });
+})();
+</script>
+</body>
+</html>

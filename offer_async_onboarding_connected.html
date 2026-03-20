@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Offer / Async Onboarding — zintegrowane przejście</title>
+<style>
+:root{
+  --bg:#f6f9fc;--card:#fff;--text:#0a2540;--muted:#425466;--line:#e6ebf1;
+  --blue:#635bff;--blue2:#0a84ff;--shadow:0 12px 32px rgba(10,37,64,.08)
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(180deg,#f6f9fc 0%,#eef4fb 100%);color:var(--text)}
+.container{max-width:920px;margin:auto;padding:40px 18px}
+.card{background:white;padding:30px;border-radius:22px;box-shadow:var(--shadow);border:1px solid var(--line)}
+h1{font-size:34px;line-height:1.08;margin:0 0 10px}
+p{color:var(--muted);font-size:17px;line-height:1.65}
+.btn{display:block;width:100%;padding:16px 18px;margin-top:12px;border:none;border-radius:999px;font-weight:bold;cursor:pointer;font-size:15px}
+.primary{background:linear-gradient(135deg,var(--blue),var(--blue2));color:white}
+.secondary{background:white;border:1px solid var(--line);color:var(--text)}
+.status{margin-top:18px;padding:12px;border-radius:14px;background:#f9fbff;border:1px solid #eaf0f7;color:var(--muted);font-size:14px;line-height:1.5}
+.small{font-size:13px;color:var(--muted);margin-top:10px}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="card">
+    <h1 id="headline"></h1>
+    <p id="description"></p>
+    <div id="paths"></div>
+    <div class="status" id="statusBox">Ładowanie segmentu...</div>
+    <div class="small">Ta wersja ma już prawdziwe przejście do briefu zamiast alertów.</div>
+  </div>
+</div>
+
+<script>
+const qs = new URLSearchParams(window.location.search);
+const cacheKey = qs.get("cacheKey") || "demo";
+const userId = qs.get("userId") || "user_demo";
+const briefUrlBase = "async_onboarding_brief_flow.html";
+
+async function loadState(){
+  try{
+    const res = await fetch("/api/cover-score/" + cacheKey);
+    const state = await res.json();
+    render(state);
+  } catch(e){
+    render({
+      segment: "WARM",
+      nextAction: "send_followup_email",
+      finalScore: null
+    });
+  }
+}
+
+async function sendEvent(eventType, extra = {}){
+  try{
+    await fetch("/api/cover-events",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        userId,
+        cacheKey,
+        eventType,
+        styleId: extra.styleId || null,
+        ctaId: extra.ctaId || null,
+        briefId: extra.briefId || null,
+        metadata: extra.metadata || {}
+      })
+    });
+  } catch(e){}
+}
+
+function goToBrief(pathType){
+  const url = `${briefUrlBase}?cacheKey=${encodeURIComponent(cacheKey)}&userId=${encodeURIComponent(userId)}&path=${encodeURIComponent(pathType)}`;
+  window.location.href = url;
+}
+
+function render(state){
+  const segment = state.segment || "WARM";
+  sendEvent("offer_page_viewed", { metadata: { segment } });
+
+  let headline = "";
+  let description = "";
+  let buttons = [];
+
+  if(segment === "COLD"){
+    headline = "To może być dobry kierunek książki";
+    description = "Możesz zachować ten kierunek i wrócić do niego później albo przejść do krótkiego briefu.";
+    buttons = [
+      {
+        label: "Zachowaj kierunek i wróć później",
+        className: "secondary",
+        onClick: async () => {
+          await sendEvent("path_selected_self", { metadata: { segment } });
+        }
+      },
+      {
+        label: "Przejdź do krótkiego briefu",
+        className: "primary",
+        onClick: async () => {
+          await sendEvent("path_selected_with_us", { metadata: { segment } });
+          await sendEvent("async_onboarding_started", { metadata: { segment } });
+          goToBrief("with_us");
+        }
+      }
+    ];
+  }
+
+  if(segment === "WARM"){
+    headline = "Twoja książka ma potencjał";
+    description = "Możesz rozwinąć ją samodzielnie albo przejść do krótkiego briefu i wejść dalej asynchronicznie.";
+    buttons = [
+      {
+        label: "Rozwijam książkę samodzielnie",
+        className: "secondary",
+        onClick: async () => {
+          await sendEvent("path_selected_self", { metadata: { segment } });
+          goToBrief("self");
+        }
+      },
+      {
+        label: "Przejdź do briefu",
+        className: "primary",
+        onClick: async () => {
+          await sendEvent("path_selected_with_us", { metadata: { segment } });
+          await sendEvent("async_onboarding_started", { metadata: { segment } });
+          goToBrief("with_us");
+        }
+      }
+    ];
+  }
+
+  if(segment === "HOT"){
+    headline = "To może być realny produkt";
+    description = "Masz już kierunek. Następny ruch to wejście do briefu i rozpoczęcie współtworzenia bez calla.";
+    buttons = [
+      {
+        label: "Rozpocznij współtworzenie książki",
+        className: "primary",
+        onClick: async () => {
+          await sendEvent("path_selected_with_us", { metadata: { segment } });
+          await sendEvent("cta_clicked", { ctaId: "develop_with_us", metadata: { segment } });
+          await sendEvent("async_onboarding_started", { metadata: { segment } });
+          goToBrief("with_us");
+        }
+      },
+      {
+        label: "Chcę najpierw zobaczyć brief",
+        className: "secondary",
+        onClick: async () => {
+          await sendEvent("cta_clicked", { ctaId: "preview_brief", metadata: { segment } });
+          goToBrief("self");
+        }
+      }
+    ];
+  }
+
+  if(segment === "VERY_HOT"){
+    headline = "Jesteś gotowy na start";
+    description = "Najlepszy następny krok to wejść od razu do onboardingu i zamknąć brief.";
+    buttons = [
+      {
+        label: "Przejdź do onboardingu teraz",
+        className: "primary",
+        onClick: async () => {
+          await sendEvent("path_selected_with_us", { metadata: { segment } });
+          await sendEvent("cta_clicked", { ctaId: "priority_onboarding", metadata: { segment } });
+          await sendEvent("async_onboarding_started", { metadata: { segment } });
+          goToBrief("with_us");
+        }
+      }
+    ];
+  }
+
+  document.getElementById("headline").innerText = headline;
+  document.getElementById("description").innerText = description;
+  document.getElementById("statusBox").innerHTML = `
+    cacheKey: <strong>${cacheKey}</strong><br>
+    userId: <strong>${userId}</strong><br>
+    segment: <strong>${segment}</strong><br>
+    nextAction: <strong>${state.nextAction || "-"}</strong><br>
+    finalScore: <strong>${state.finalScore ?? "-"}</strong>
+  `;
+
+  const paths = document.getElementById("paths");
+  paths.innerHTML = "";
+
+  buttons.forEach(cfg => {
+    const btn = document.createElement("button");
+    btn.className = "btn " + cfg.className;
+    btn.innerText = cfg.label;
+    btn.onclick = cfg.onClick;
+    paths.appendChild(btn);
+  });
+}
+
+loadState();
+</script>
+
+</body>
+</html>
