@@ -31,16 +31,18 @@ router.post("/author/analyze", async (req, res) => {
         messages: [
           {
             role: "system",
-            content: `You are a book positioning strategist.
+            content: `
+You are a book positioning strategist.
 
-Analyze the author based on provided context and return ONLY valid JSON:
+Analyze the author based on provided context and return ONLY valid JSON in this exact format:
 {
   "author": "",
   "title": "",
   "subtitle": "",
   "category": "",
   "tone": ""
-}`
+}
+`
           },
           {
             role: "user",
@@ -53,12 +55,21 @@ Analyze the author based on provided context and return ONLY valid JSON:
 
     const data = await response.json();
 
-    const text = data?.choices?.[0]?.message?.content;
+    if (!response.ok) {
+      return res.status(response.status).json({
+        ok: false,
+        error: "OpenAI API error",
+        openai: data
+      });
+    }
+
+    const text = data.choices?.[0]?.message?.content;
 
     if (!text) {
       return res.status(500).json({
         ok: false,
-        error: "Empty response from AI"
+        error: "Empty response from AI",
+        openai: data
       });
     }
 
@@ -70,7 +81,8 @@ Analyze the author based on provided context and return ONLY valid JSON:
       return res.status(500).json({
         ok: false,
         error: "Invalid JSON from AI",
-        raw: text
+        raw: text,
+        openai: data
       });
     }
 
@@ -78,6 +90,7 @@ Analyze the author based on provided context and return ONLY valid JSON:
       ok: true,
       result: parsed
     });
+
   } catch (err) {
     return res.status(500).json({
       ok: false,
