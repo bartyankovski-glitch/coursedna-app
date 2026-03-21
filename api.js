@@ -1,144 +1,79 @@
-import express from "express";
-import { createId, db } from "./db.js";
-import { generateCovers } from "./coverService.js";
-import { recordEvent, getScoreState, getScoreHistory } from "./scoringService.js";
+export default async function handler(req, res) {
 
-const router = express.Router();
-
-router.post("/covers/generate", express.json(), async (req, res) => {
-  const payload = {
-    userId: req.body.userId || "user_001",
-    authorName: req.body.authorName || "Dariusz Skraskowski",
-    bookTitle: req.body.bookTitle || "Jak opanować stres, prowadzić lepsze rozmowy i działać skuteczniej",
-    bookSubtitle: req.body.bookSubtitle || "Praktyczna psychologia rozmowy, działania i wpływu",
-    primaryCategory: req.body.primaryCategory || "psychologia sprzedaży",
-    tone: req.body.tone || "premium",
-    emotionLevel: req.body.emotionLevel || "medium",
-    language: req.body.language || "pl"
-  };
-
-  const result = await generateCovers(payload);
-  res.json(result);
-});
-
-router.post("/cover-events", express.json(), (req, res) => {
-  const event = {
-    id: createId("evt"),
-    userId: req.body.userId || "user_demo",
-    cacheKey: req.body.cacheKey,
-    eventType: req.body.eventType,
-    createdAt: new Date().toISOString()
-  };
-
-  const state = recordEvent(event);
-  res.json({ ok: true, state });
-});
-
-router.get("/cover-score/:cacheKey", (req, res) => {
-  const state = getScoreState(req.params.cacheKey);
-  if (!state) {
-    return res.status(404).json({ error: "Score state not found" });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Only POST allowed" });
   }
-  res.json(state);
-});
 
-router.get("/cover-score/:cacheKey/history", (req, res) => {
-  res.json({
-    cacheKey: req.params.cacheKey,
-    history: getScoreHistory(req.params.cacheKey)
-  });
-});
+  const { authorContext } = req.body;
 
-router.post("/author/analyze", express.json({ limit: "2mb" }), async (req, res) => {
+  if (!authorContext) {
+    return res.status(400).json({ error: "Missing authorContext" });
+  }
+
   try {
-    const {
-      linkedinUrl = "",
-      sourceUrls = [],
-      authorContext = ""
-    } = req.body || {};
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `
+You are a book positioning strategist.
 
-    const combinedText = [
-      linkedinUrl ? `LinkedIn URL: ${linkedinUrl}` : "",
-      Array.isArray(sourceUrls) && sourceUrls.length
-        ? `Dodatkowe linki:\n${sourceUrls.join("\n")}`
-        : "",
-      authorContext ? `Treść o autorze:\n${authorContext}` : ""
-    ]
-      .filter(Boolean)
-      .join("\n\n");
+Analyze the author based on provided context and return:
 
-    // MVP fallback:
-    // Na tym etapie NIE wołamy jeszcze modelu AI.
-    // Zwracamy prostą analizę heurystyczną, żeby podłączyć flow end-to-end.
-    // W kolejnym kroku można to podmienić na prawdziwe wywołanie modelu.
+- author (full name or best guess)
+- title (compelling book title)
+- subtitle (clear benefit-driven subtitle)
+- category (1 word)
+- tone (premium, dark or light)
 
-    const text = combinedText.toLowerCase();
+Respond ONLY in JSON:
+{
+  "author": "",
+  "title": "",
+  "subtitle": "",
+  "category": "",
+  "tone": ""
+}
+`
+          },
+          {
+            role: "user",
+            content: authorContext
+          }
+        ],
+        temperature: 0.7
+      })
+    });
 
-    let author = "Autor";
-    let category = "biznes";
-    let tone = "premium";
-    let title = "Strategiczny ebook ekspercki";
-    let subtitle = "Jak zamienić wiedzę w produkt, który buduje autorytet i sprzedaż";
-    let themes = ["eksperckość", "produkt wiedzy"];
-    let summary = "To jest wstępna analiza autora w trybie AUTO mode.";
-    let confidence = 0.52;
+    const data = await response.json();
 
-    // Prosta heurystyka pod case Darka / podobne profile
-    if (
-      text.includes("dariusz skraskowski") ||
-      text.includes("stres") ||
-      text.includes("rozmow") ||
-      text.includes("komunikacj") ||
-      text.includes("wpływ")
-    ) {
-      author = "Dariusz Skraskowski";
-      category = "psychologia sprzedaży";
-      tone = "premium";
-      title = "Jak opanować stres i prowadzić lepsze rozmowy";
-      subtitle = "Praktyczna psychologia wpływu, komunikacji i działania dla ekspertów i sprzedawców";
-      themes = ["stres", "komunikacja", "wpływ", "rozmowy", "sprzedaż"];
-      summary =
-        "Autor komunikuje obszary związane ze stresem, komunikacją i wpływem. Najbardziej sprzedażowym kierunkiem jest praktyczny ebook łączący psychologię rozmowy i skuteczność działania.";
-      confidence = 0.86;
-    } else if (text.includes("sprzeda") || text.includes("negocjacj")) {
-      category = "sprzedaż";
-      tone = "authority";
-      title = "Jak sprzedawać spokojniej i skuteczniej";
-      subtitle = "Psychologia rozmowy, wpływu i decyzji w nowoczesnej sprzedaży";
-      themes = ["sprzedaż", "negocjacje", "wpływ"];
-      summary =
-        "Treść wskazuje na ekspercki obszar sprzedaży i wpływu. Najlepszy kierunek to praktyczny produkt wiedzy osadzony w realnych rozmowach sprzedażowych.";
-      confidence = 0.74;
-    } else if (text.includes("coach") || text.includes("trener") || text.includes("ekspert")) {
-      category = "rozwój osobisty";
-      tone = "clean";
-      title = "Jak zamienić wiedzę w produkt ekspercki";
-      subtitle = "Przewodnik dla trenerów, konsultantów i ekspertów, którzy chcą sprzedawać swoją wiedzę";
-      themes = ["eksperckość", "produkt cyfrowy", "autorytet"];
-      summary =
-        "Materiał sugeruje profil ekspercki. Najlepszy kierunek to ebook, który porządkuje wiedzę autora i przygotowuje grunt pod sprzedaż.";
-      confidence = 0.67;
+    const text = data.choices?.[0]?.message?.content;
+
+    let parsed;
+
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      return res.status(500).json({ ok: false, error: "Invalid JSON from AI", raw: text });
     }
 
-    return res.json({
+    return res.status(200).json({
       ok: true,
-      result: {
-        author,
-        themes,
-        title,
-        subtitle,
-        category,
-        tone,
-        summary,
-        confidence
-      }
+      result: parsed
     });
-  } catch (error) {
+
+  } catch (err) {
     return res.status(500).json({
       ok: false,
-      error: error.message || "Author analyze failed"
+      error: "Server error",
+      details: err.message
     });
   }
-});
-
-export default router;
+}
