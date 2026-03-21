@@ -7,21 +7,22 @@
 
   <style>
     body {
-      font-family: Arial, sans-serif;
       margin: 0;
+      font-family: Arial, sans-serif;
       background: #f6f9fc;
       padding: 20px;
     }
 
-    .container {
-      max-width: 700px;
+    .wrap {
+      max-width: 1120px;
       margin: 0 auto;
     }
 
     .card {
       background: #fff;
-      padding: 20px;
+      border: 1px solid #eee;
       border-radius: 12px;
+      padding: 20px;
       margin-bottom: 20px;
     }
 
@@ -31,7 +32,6 @@
       margin-bottom: 10px;
       border-radius: 8px;
       border: 1px solid #ddd;
-      font-size: 14px;
     }
 
     button {
@@ -45,19 +45,18 @@
     }
 
     .preview {
-      padding: 20px;
-      border-radius: 12px;
       background: linear-gradient(135deg,#1e3a8a,#3b82f6);
       color: white;
+      padding: 30px;
+      border-radius: 16px;
     }
   </style>
 </head>
 
 <body>
 
-<div class="container">
+<div class="wrap">
 
-  <!-- AUTO MODE -->
   <div class="card">
     <h3>AUTO mode (beta)</h3>
 
@@ -68,7 +67,6 @@
     <div id="analyzeStatus"></div>
   </div>
 
-  <!-- FORM -->
   <div class="card">
 
     <input id="authorName" placeholder="Autor">
@@ -78,90 +76,4 @@
 
     <select id="tone">
       <option value="premium">premium</option>
-      <option value="dark">dark</option>
-      <option value="light">light</option>
-    </select>
-
-    <select id="language">
-      <option value="pl">pl</option>
-      <option value="en">en</option>
-    </select>
-
-    <button onclick="generate()">Generuj preview</button>
-
-  </div>
-
-  <!-- PREVIEW -->
-  <div id="preview" class="preview"></div>
-
-</div>
-
-<script>
-
-async function analyzeAuthor() {
-  const authorContext = document.getElementById("authorContext").value;
-  const status = document.getElementById("analyzeStatus");
-
-  status.innerText = "Analizuję...";
-
-  try {
-    const res = await fetch("/api/author/analyze", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ authorContext })
-    });
-
-    const data = await res.json();
-
-    if (!data.ok) {
-      status.innerText = "Błąd analizy";
-      return;
-    }
-
-    const r = data.result;
-
-    document.getElementById("authorName").value = r.author || "";
-    document.getElementById("bookTitle").value = r.title || "";
-    document.getElementById("bookSubtitle").value = r.subtitle || "";
-    document.getElementById("category").value = r.category || "";
-    document.getElementById("tone").value = r.tone || "premium";
-
-    status.innerText = "Gotowe ✔";
-
-  } catch (e) {
-    status.innerText = "Błąd połączenia";
-  }
-}
-
-async function generate() {
-  const payload = {
-    authorName: document.getElementById("authorName").value,
-    bookTitle: document.getElementById("bookTitle").value,
-    bookSubtitle: document.getElementById("bookSubtitle").value,
-    primaryCategory: document.getElementById("category").value,
-    tone: document.getElementById("tone").value,
-    language: document.getElementById("language").value
-  };
-
-  const res = await fetch("/api/covers/generate", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(payload)
-  });
-
-  const data = await res.json();
-
-  document.getElementById("preview").innerHTML =
-    "<h2>" + payload.bookTitle + "</h2>" +
-    "<p>" + payload.bookSubtitle + "</p>" +
-    "<p>" + payload.authorName + "</p>";
-}
-
-</script>
-
-</body>
-</html>
+      <option
