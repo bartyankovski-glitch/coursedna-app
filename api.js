@@ -1,12 +1,12 @@
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Only POST allowed" });
-  }
+import express from "express";
 
+const router = express.Router();
+
+router.post("/author/analyze", async (req, res) => {
   const { input } = req.body;
 
   if (!input) {
-    return res.status(400).json({ error: "No input" });
+    return res.status(400).json({ error: "Missing input" });
   }
 
   try {
@@ -24,8 +24,15 @@ export default async function handler(req, res) {
             content: `
 You are a book positioning strategist.
 
-Analyze the author based on provided context and return ONLY valid JSON:
+Analyze the author based on provided context and return:
 
+- author (full name or best guess)
+- title (compelling book title)
+- subtitle (clear benefit-driven subtitle)
+- category (1 word)
+- tone (premium, dark or light)
+
+Respond ONLY in JSON:
 {
   "author": "",
   "title": "",
@@ -33,14 +40,6 @@ Analyze the author based on provided context and return ONLY valid JSON:
   "category": "",
   "tone": ""
 }
-
-Rules:
-- author = full name or best possible guess
-- title = compelling book title
-- subtitle = benefit-driven subtitle
-- category = one short category word
-- tone = one of: premium, dark, light
-- return JSON only, no markdown, no explanation
 `
           },
           {
@@ -57,8 +56,8 @@ Rules:
     if (!response.ok) {
       return res.status(response.status).json({
         ok: false,
-        error: "OpenAI API error",
-        details: data
+        error: data?.error?.message || "OpenAI request failed",
+        raw: data
       });
     }
 
@@ -94,4 +93,6 @@ Rules:
       details: err.message
     });
   }
-}
+});
+
+export default router;
