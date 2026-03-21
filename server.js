@@ -1,4 +1,4 @@
-"import express from 'express';
+import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import apiRouter from './api.js';
@@ -30,4 +30,4 @@ app.get('*', (req, res) => {
 
 app.listen(process.env.PORT || 3000, () => {
   console.log('Server running');
-});"
+});
