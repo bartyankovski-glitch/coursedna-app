@@ -1,13 +1,12 @@
 export default async function handler(req, res) {
-
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Only POST allowed" });
   }
 
-  const { authorContext } = req.body;
+  const { input } = req.body;
 
-  if (!authorContext) {
-    return res.status(400).json({ error: "Missing authorContext" });
+  if (!input) {
+    return res.status(400).json({ error: "No input" });
   }
 
   try {
@@ -25,15 +24,8 @@ export default async function handler(req, res) {
             content: `
 You are a book positioning strategist.
 
-Analyze the author based on provided context and return:
+Analyze the author based on provided context and return ONLY valid JSON:
 
-- author (full name or best guess)
-- title (compelling book title)
-- subtitle (clear benefit-driven subtitle)
-- category (1 word)
-- tone (premium, dark or light)
-
-Respond ONLY in JSON:
 {
   "author": "",
   "title": "",
@@ -41,11 +33,19 @@ Respond ONLY in JSON:
   "category": "",
   "tone": ""
 }
+
+Rules:
+- author = full name or best possible guess
+- title = compelling book title
+- subtitle = benefit-driven subtitle
+- category = one short category word
+- tone = one of: premium, dark, light
+- return JSON only, no markdown, no explanation
 `
           },
           {
             role: "user",
-            content: authorContext
+            content: input
           }
         ],
         temperature: 0.7
@@ -54,21 +54,39 @@ Respond ONLY in JSON:
 
     const data = await response.json();
 
+    if (!response.ok) {
+      return res.status(response.status).json({
+        ok: false,
+        error: "OpenAI API error",
+        details: data
+      });
+    }
+
     const text = data.choices?.[0]?.message?.content;
+
+    if (!text) {
+      return res.status(500).json({
+        ok: false,
+        error: "Empty response from AI"
+      });
+    }
 
     let parsed;
 
     try {
       parsed = JSON.parse(text);
     } catch {
-      return res.status(500).json({ ok: false, error: "Invalid JSON from AI", raw: text });
+      return res.status(500).json({
+        ok: false,
+        error: "Invalid JSON from AI",
+        raw: text
+      });
     }
 
     return res.status(200).json({
       ok: true,
       result: parsed
     });
-
   } catch (err) {
     return res.status(500).json({
       ok: false,
