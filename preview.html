@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Preview</title>
+  <title>AiBook Preview</title>
 
   <style>
     body {
@@ -11,10 +11,11 @@
       font-family: Arial, sans-serif;
       background: #f6f9fc;
       padding: 20px;
+      color: #0f172a;
     }
 
     .wrap {
-      max-width: 1120px;
+      max-width: 1180px;
       margin: 0 auto;
     }
 
@@ -24,6 +25,13 @@
       border-radius: 12px;
       padding: 20px;
       margin-bottom: 20px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 24px;
+      align-items: start;
     }
 
     input, select, textarea {
@@ -37,7 +45,7 @@
     }
 
     textarea {
-      min-height: 140px;
+      min-height: 120px;
       resize: vertical;
     }
 
@@ -45,18 +53,16 @@
       padding: 12px 16px;
       border: none;
       border-radius: 10px;
-      background: linear-gradient(135deg,#4f46e5,#2563eb);
+      background: linear-gradient(135deg, #4f46e5, #2563eb);
       color: white;
       font-weight: bold;
       cursor: pointer;
     }
 
-    .preview {
-      background: linear-gradient(135deg,#1e3a8a,#3b82f6);
-      color: white;
-      padding: 30px;
-      border-radius: 16px;
-      margin-top: 10px;
+    .label {
+      display: block;
+      font-weight: bold;
+      margin: 10px 0 8px;
     }
 
     #analyzeStatus {
@@ -70,179 +76,325 @@
       min-height: 24px;
     }
 
-    .label {
-      display: block;
-      font-weight: bold;
-      margin-bottom: 8px;
-      margin-top: 8px;
+    .cover-wrap {
+      display: flex;
+      justify-content: center;
     }
 
-    h2, h3, p {
-      margin-top: 0;
+    .cover {
+      width: 100%;
+      max-width: 420px;
+      min-height: 620px;
+      border-radius: 22px;
+      overflow: hidden;
+      padding: 28px;
+      box-sizing: border-box;
+      box-shadow: 0 20px 60px rgba(15, 23, 42, 0.18);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      color: white;
+      background: linear-gradient(160deg, #0f172a 0%, #1d4ed8 45%, #2563eb 100%);
+      position: relative;
+    }
+
+    .cover.premium {
+      background: linear-gradient(160deg, #0f172a 0%, #1e3a8a 48%, #3b82f6 100%);
+    }
+
+    .cover.classic {
+      background: linear-gradient(160deg, #1f2937 0%, #374151 45%, #6b7280 100%);
+    }
+
+    .cover.modern {
+      background: linear-gradient(160deg, #111827 0%, #0f766e 45%, #14b8a6 100%);
+    }
+
+    .cover.bold {
+      background: linear-gradient(160deg, #450a0a 0%, #b91c1c 45%, #f97316 100%);
+    }
+
+    .cover-topline {
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      opacity: 0.9;
+      margin-bottom: 16px;
+    }
+
+    .cover-hook {
+      font-size: 16px;
+      line-height: 1.45;
+      font-weight: 600;
+      opacity: 0.95;
+      margin-bottom: 24px;
+      max-width: 90%;
+    }
+
+    .cover-title {
+      font-size: 42px;
+      line-height: 1.04;
+      font-weight: 800;
+      margin: 0 0 18px;
+      max-width: 95%;
+    }
+
+    .cover-subtitle {
+      font-size: 17px;
+      line-height: 1.5;
+      opacity: 0.95;
+      max-width: 94%;
+      margin-bottom: 28px;
+    }
+
+    .cover-divider {
+      width: 72px;
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.92);
+      margin: 18px 0 24px;
+    }
+
+    .cover-bottom {
+      margin-top: auto;
+    }
+
+    .cover-author {
+      font-size: 15px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 700;
+      opacity: 0.95;
+      margin-bottom: 8px;
+    }
+
+    .cover-meta {
+      font-size: 13px;
+      opacity: 0.88;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .mini-preview {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      color: #0f172a;
+    }
+
+    .muted {
+      color: #64748b;
+    }
+
+    @media (max-width: 980px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .cover {
+        max-width: 100%;
+      }
     }
   </style>
 </head>
-
 <body>
 
-<div class="wrap">
+  <div class="wrap">
 
-  <div class="card">
-    <h3>AUTO mode (beta)</h3>
-
-    <label class="label" for="linkedinInput">LinkedIn / bio autora</label>
-    <textarea
-      id="linkedinInput"
-      placeholder="Wklej bio z LinkedIn, headline, about, doświadczenie, specjalizację..."
-    ></textarea>
-
-    <label class="label" for="authorContext">Opisy książek / dodatkowy kontekst</label>
-    <textarea
-      id="authorContext"
-      placeholder="Wklej opisy książek, notki z księgarni, tematy szkoleń, dodatkowe informacje..."
-    ></textarea>
-
-    <button onclick="analyzeAuthor()">Analizuj autora</button>
-
-    <div id="analyzeStatus"></div>
-  </div>
-
-  <div class="card">
-    <input id="authorName" placeholder="Autor">
-    <input id="bookTitle" placeholder="Tytuł książki">
-    <input id="bookSubtitle" placeholder="Podtytuł">
-    <input id="category" placeholder="Kategoria">
-
-    <select id="tone">
-      <option value="premium">premium</option>
-      <option value="classic">classic</option>
-      <option value="modern">modern</option>
-      <option value="bold">bold</option>
-    </select>
-
-    <div class="preview">
-      <h2 id="previewAuthor">Autor</h2>
-      <h3 id="previewTitle">Tytuł książki</h3>
-      <p id="previewSubtitle">Podtytuł</p>
-      <p id="previewCategory">Kategoria</p>
-      <p id="previewTone">Tone: premium</p>
+    <div class="card">
+      <h2>AiBook Generator</h2>
+      <p class="muted">Wklej osobno bio / kontekst z LinkedIn oraz opisy książek lub dodatkowy materiał źródłowy.</p>
     </div>
+
+    <div class="grid">
+      <div class="card">
+        <label class="label" for="linkedinInput">LinkedIn / bio autora</label>
+        <textarea
+          id="linkedinInput"
+          placeholder="Wklej bio z LinkedIn, headline, about, doświadczenie, specjalizację..."
+        ></textarea>
+
+        <label class="label" for="authorContext">Opisy książek / dodatkowy kontekst</label>
+        <textarea
+          id="authorContext"
+          placeholder="Wklej opisy książek, notki z księgarni, tematy szkoleń, dodatkowe informacje..."
+        ></textarea>
+
+        <button onclick="analyzeAuthor()">Analizuj autora</button>
+
+        <div id="analyzeStatus"></div>
+
+        <div class="mini-preview">
+          <label class="label" for="authorName">Autor</label>
+          <input id="authorName" placeholder="Autor">
+
+          <label class="label" for="bookTitle">Tytuł</label>
+          <input id="bookTitle" placeholder="Tytuł książki">
+
+          <label class="label" for="bookSubtitle">Podtytuł</label>
+          <input id="bookSubtitle" placeholder="Podtytuł">
+
+          <label class="label" for="category">Kategoria</label>
+          <input id="category" placeholder="Kategoria">
+
+          <label class="label" for="hook">Hook</label>
+          <input id="hook" placeholder="Krótka obietnica / one-liner">
+
+          <label class="label" for="tone">Tone</label>
+          <select id="tone">
+            <option value="premium">premium</option>
+            <option value="classic">classic</option>
+            <option value="modern">modern</option>
+            <option value="bold">bold</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="cover-wrap">
+          <div id="cover" class="cover premium">
+            <div>
+              <div class="cover-topline" id="coverTopline">AIBOOK WORKBOOK</div>
+              <div class="cover-hook" id="coverHook">Praktyczne narzędzie transformacyjne do wdrożenia wiedzy.</div>
+              <h1 class="cover-title" id="coverTitle">Tytuł AiBooka</h1>
+              <div class="cover-divider"></div>
+              <div class="cover-subtitle" id="coverSubtitle">Podtytuł opisujący transformację, system i wartość produktu.</div>
+            </div>
+
+            <div class="cover-bottom">
+              <div class="cover-author" id="coverAuthor">Autor</div>
+              <div class="cover-meta" id="coverMeta">Business • premium</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
-</div>
+  <script>
+    function normalizeTone(tone) {
+      if (!tone) return "premium";
 
-<script>
-  function normalizeTone(tone) {
-    if (!tone) return "premium";
+      const value = String(tone).toLowerCase().trim();
 
-    const value = String(tone).toLowerCase().trim();
+      if (["premium", "classic", "modern", "bold"].includes(value)) {
+        return value;
+      }
 
-    if (["premium", "classic", "modern", "bold"].includes(value)) {
-      return value;
-    }
+      if (["informative", "professional", "expert", "business"].includes(value)) {
+        return "premium";
+      }
 
-    if (["informative", "professional", "expert", "business"].includes(value)) {
+      if (["elegant", "serious", "trusted", "trust"].includes(value)) {
+        return "classic";
+      }
+
+      if (["fresh", "clean", "minimal", "contemporary"].includes(value)) {
+        return "modern";
+      }
+
+      if (["strong", "aggressive", "direct", "dynamic"].includes(value)) {
+        return "bold";
+      }
+
       return "premium";
     }
 
-    if (["elegant", "serious", "trust", "trusted"].includes(value)) {
-      return "classic";
+    function updatePreview() {
+      const authorName = document.getElementById("authorName").value || "Autor";
+      const bookTitle = document.getElementById("bookTitle").value || "Tytuł AiBooka";
+      const bookSubtitle = document.getElementById("bookSubtitle").value || "Podtytuł opisujący transformację, system i wartość produktu.";
+      const category = document.getElementById("category").value || "Business";
+      const tone = document.getElementById("tone").value || "premium";
+      const hook = document.getElementById("hook").value || "Praktyczne narzędzie transformacyjne do wdrożenia wiedzy.";
+
+      const cover = document.getElementById("cover");
+      cover.className = "cover " + tone;
+
+      document.getElementById("coverHook").innerText = hook;
+      document.getElementById("coverTitle").innerText = bookTitle;
+      document.getElementById("coverSubtitle").innerText = bookSubtitle;
+      document.getElementById("coverAuthor").innerText = authorName;
+      document.getElementById("coverMeta").innerText = category + " • " + tone;
     }
 
-    if (["fresh", "clean", "minimal", "contemporary"].includes(value)) {
-      return "modern";
-    }
+    document.getElementById("authorName").addEventListener("input", updatePreview);
+    document.getElementById("bookTitle").addEventListener("input", updatePreview);
+    document.getElementById("bookSubtitle").addEventListener("input", updatePreview);
+    document.getElementById("category").addEventListener("input", updatePreview);
+    document.getElementById("hook").addEventListener("input", updatePreview);
+    document.getElementById("tone").addEventListener("change", updatePreview);
 
-    if (["strong", "aggressive", "direct", "dynamic"].includes(value)) {
-      return "bold";
-    }
+    async function analyzeAuthor() {
+      const status = document.getElementById("analyzeStatus");
+      const linkedinInput = document.getElementById("linkedinInput").value.trim();
+      const authorContext = document.getElementById("authorContext").value.trim();
 
-    return "premium";
-  }
-
-  function updatePreview() {
-    const authorName = document.getElementById("authorName").value || "Autor";
-    const bookTitle = document.getElementById("bookTitle").value || "Tytuł książki";
-    const bookSubtitle = document.getElementById("bookSubtitle").value || "Podtytuł";
-    const category = document.getElementById("category").value || "Kategoria";
-    const tone = document.getElementById("tone").value || "premium";
-
-    document.getElementById("previewAuthor").innerText = authorName;
-    document.getElementById("previewTitle").innerText = bookTitle;
-    document.getElementById("previewSubtitle").innerText = bookSubtitle;
-    document.getElementById("previewCategory").innerText = category;
-    document.getElementById("previewTone").innerText = "Tone: " + tone;
-  }
-
-  document.getElementById("authorName").addEventListener("input", updatePreview);
-  document.getElementById("bookTitle").addEventListener("input", updatePreview);
-  document.getElementById("bookSubtitle").addEventListener("input", updatePreview);
-  document.getElementById("category").addEventListener("input", updatePreview);
-  document.getElementById("tone").addEventListener("change", updatePreview);
-
-  async function analyzeAuthor() {
-    const status = document.getElementById("analyzeStatus");
-    const linkedinInput = document.getElementById("linkedinInput").value.trim();
-    const authorContext = document.getElementById("authorContext").value.trim();
-
-    if (!linkedinInput && !authorContext) {
-      status.innerText = "Wklej najpierw tekst LinkedIn albo opisy książek.";
-      return;
-    }
-
-    status.innerText = "Analizuję...";
-
-    try {
-      const response = await fetch("/api/author/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          linkedinInput,
-          authorContext
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        status.innerText = "Błąd API: " + JSON.stringify(data, null, 2);
+      if (!linkedinInput && !authorContext) {
+        status.innerText = "Wklej najpierw tekst LinkedIn albo opisy książek.";
         return;
       }
 
-      const result = data.result || data;
+      status.innerText = "Analizuję...";
 
-      status.innerText = "OK: " + JSON.stringify(result, null, 2);
+      try {
+        const response = await fetch("/api/author/analyze", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            linkedinInput,
+            authorContext
+          })
+        });
 
-      if (result.author) {
-        document.getElementById("authorName").value = result.author;
+        const data = await response.json();
+
+        if (!response.ok) {
+          status.innerText = "Błąd API: " + JSON.stringify(data, null, 2);
+          return;
+        }
+
+        const result = data.result || data;
+
+        status.innerText = "OK: " + JSON.stringify(result, null, 2);
+
+        if (result.author) {
+          document.getElementById("authorName").value = result.author;
+        }
+
+        if (result.title) {
+          document.getElementById("bookTitle").value = result.title;
+        }
+
+        if (result.subtitle) {
+          document.getElementById("bookSubtitle").value = result.subtitle;
+        }
+
+        if (result.category) {
+          document.getElementById("category").value = result.category;
+        }
+
+        if (result.hook) {
+          document.getElementById("hook").value = result.hook;
+        }
+
+        if (result.tone) {
+          document.getElementById("tone").value = normalizeTone(result.tone);
+        }
+
+        updatePreview();
+      } catch (err) {
+        status.innerText = "Błąd: " + err.message;
       }
-
-      if (result.title) {
-        document.getElementById("bookTitle").value = result.title;
-      }
-
-      if (result.subtitle) {
-        document.getElementById("bookSubtitle").value = result.subtitle;
-      }
-
-      if (result.category) {
-        document.getElementById("category").value = result.category;
-      }
-
-      if (result.tone) {
-        document.getElementById("tone").value = normalizeTone(result.tone);
-      }
-
-      updatePreview();
-    } catch (err) {
-      status.innerText = "Błąd: " + err.message;
     }
-  }
 
-  updatePreview();
-</script>
+    updatePreview();
+  </script>
 
 </body>
 </html>
