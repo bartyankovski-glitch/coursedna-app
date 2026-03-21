@@ -2,11 +2,21 @@ import express from "express";
 
 const router = express.Router();
 
+router.get("/author/analyze", (_req, res) => {
+  return res.status(200).json({
+    ok: true,
+    message: "GET test działa"
+  });
+});
+
 router.post("/author/analyze", async (req, res) => {
   const { input } = req.body;
 
   if (!input) {
-    return res.status(400).json({ error: "Missing input" });
+    return res.status(400).json({
+      ok: false,
+      error: "No input"
+    });
   }
 
   try {
@@ -21,26 +31,16 @@ router.post("/author/analyze", async (req, res) => {
         messages: [
           {
             role: "system",
-            content: `
-You are a book positioning strategist.
+            content: `You are a book positioning strategist.
 
-Analyze the author based on provided context and return:
-
-- author (full name or best guess)
-- title (compelling book title)
-- subtitle (clear benefit-driven subtitle)
-- category (1 word)
-- tone (premium, dark or light)
-
-Respond ONLY in JSON:
+Analyze the author based on provided context and return ONLY valid JSON:
 {
   "author": "",
   "title": "",
   "subtitle": "",
   "category": "",
   "tone": ""
-}
-`
+}`
           },
           {
             role: "user",
@@ -53,15 +53,7 @@ Respond ONLY in JSON:
 
     const data = await response.json();
 
-    if (!response.ok) {
-      return res.status(response.status).json({
-        ok: false,
-        error: data?.error?.message || "OpenAI request failed",
-        raw: data
-      });
-    }
-
-    const text = data.choices?.[0]?.message?.content;
+    const text = data?.choices?.[0]?.message?.content;
 
     if (!text) {
       return res.status(500).json({
