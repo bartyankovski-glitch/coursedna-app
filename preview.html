@@ -1,8 +1,8 @@
-<!DOCTYPE html>
-<html lang="pl">
+"<!DOCTYPE html>
+<html lang=\"pl\">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset=\"UTF-8\">
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
   <title>Preview</title>
 
   <style>
@@ -78,37 +78,37 @@
 
 <body>
 
-<div class="wrap">
+<div class=\"wrap\">
 
-  <div class="card">
+  <div class=\"card\">
     <h3>AUTO mode (beta)</h3>
 
-    <textarea id="authorContext" placeholder="Wklej LinkedIn, opis książek, bio autora..."></textarea>
+    <textarea id=\"authorContext\" placeholder=\"Wklej LinkedIn, opis książek, bio autora...\"></textarea>
 
-    <button onclick="analyzeAuthor()">Analizuj autora</button>
+    <button onclick=\"analyzeAuthor()\">Analizuj autora</button>
 
-    <div id="analyzeStatus"></div>
+    <div id=\"analyzeStatus\"></div>
   </div>
 
-  <div class="card">
-    <input id="authorName" placeholder="Autor">
-    <input id="bookTitle" placeholder="Tytuł książki">
-    <input id="bookSubtitle" placeholder="Podtytuł">
-    <input id="category" placeholder="Kategoria">
+  <div class=\"card\">
+    <input id=\"authorName\" placeholder=\"Autor\">
+    <input id=\"bookTitle\" placeholder=\"Tytuł książki\">
+    <input id=\"bookSubtitle\" placeholder=\"Podtytuł\">
+    <input id=\"category\" placeholder=\"Kategoria\">
 
-    <select id="tone">
-      <option value="premium">premium</option>
-      <option value="classic">classic</option>
-      <option value="modern">modern</option>
-      <option value="bold">bold</option>
+    <select id=\"tone\">
+      <option value=\"premium\">premium</option>
+      <option value=\"classic\">classic</option>
+      <option value=\"modern\">modern</option>
+      <option value=\"bold\">bold</option>
     </select>
 
-    <div class="preview">
-      <h2 id="previewAuthor">Autor</h2>
-      <h3 id="previewTitle">Tytuł książki</h3>
-      <p id="previewSubtitle">Podtytuł</p>
-      <p id="previewCategory">Kategoria</p>
-      <p id="previewTone">Tone: premium</p>
+    <div class=\"preview\">
+      <h2 id=\"previewAuthor\">Autor</h2>
+      <h3 id=\"previewTitle\">Tytuł książki</h3>
+      <p id=\"previewSubtitle\">Podtytuł</p>
+      <p id=\"previewCategory\">Kategoria</p>
+      <p id=\"previewTone\">Tone: premium</p>
     </div>
   </div>
 
@@ -116,57 +116,87 @@
 
 <script>
   function updatePreview() {
-    const authorName = document.getElementById("authorName").value || "Autor";
-    const bookTitle = document.getElementById("bookTitle").value || "Tytuł książki";
-    const bookSubtitle = document.getElementById("bookSubtitle").value || "Podtytuł";
-    const category = document.getElementById("category").value || "Kategoria";
-    const tone = document.getElementById("tone").value || "premium";
+    const authorName = document.getElementById(\"authorName\").value || \"Autor\";
+    const bookTitle = document.getElementById(\"bookTitle\").value || \"Tytuł książki\";
+    const bookSubtitle = document.getElementById(\"bookSubtitle\").value || \"Podtytuł\";
+    const category = document.getElementById(\"category\").value || \"Kategoria\";
+    const tone = document.getElementById(\"tone\").value || \"premium\";
 
-    document.getElementById("previewAuthor").innerText = authorName;
-    document.getElementById("previewTitle").innerText = bookTitle;
-    document.getElementById("previewSubtitle").innerText = bookSubtitle;
-    document.getElementById("previewCategory").innerText = category;
-    document.getElementById("previewTone").innerText = "Tone: " + tone;
+    document.getElementById(\"previewAuthor\").innerText = authorName;
+    document.getElementById(\"previewTitle\").innerText = bookTitle;
+    document.getElementById(\"previewSubtitle\").innerText = bookSubtitle;
+    document.getElementById(\"previewCategory\").innerText = category;
+    document.getElementById(\"previewTone\").innerText = \"Tone: \" + tone;
   }
 
-  document.getElementById("authorName").addEventListener("input", updatePreview);
-  document.getElementById("bookTitle").addEventListener("input", updatePreview);
-  document.getElementById("bookSubtitle").addEventListener("input", updatePreview);
-  document.getElementById("category").addEventListener("input", updatePreview);
-  document.getElementById("tone").addEventListener("change", updatePreview);
+  document.getElementById(\"authorName\").addEventListener(\"input\", updatePreview);
+  document.getElementById(\"bookTitle\").addEventListener(\"input\", updatePreview);
+  document.getElementById(\"bookSubtitle\").addEventListener(\"input\", updatePreview);
+  document.getElementById(\"category\").addEventListener(\"input\", updatePreview);
+  document.getElementById(\"tone\").addEventListener(\"change\", updatePreview);
 
   async function analyzeAuthor() {
-    const status = document.getElementById("analyzeStatus");
-    const input = document.getElementById("authorContext").value;
+    const status = document.getElementById(\"analyzeStatus\");
+    const input = document.getElementById(\"authorContext\").value;
 
     if (!input.trim()) {
-      status.innerText = "Wklej najpierw tekst do analizy.";
+      status.innerText = \"Wklej najpierw tekst do analizy.\";
       return;
     }
 
-    status.innerText = "Analizuję...";
+    status.innerText = \"Analizuję...\";
 
     try {
-      const response = await fetch("/api/author/analyze", {
-        method: "POST",
+      const response = await fetch(\"https://coursedna-app.onrender.com/api/author/analyze\", {
+        method: \"POST\",
         headers: {
-          "Content-Type": "application/json"
+          \"Content-Type\": \"application/json\"
         },
         body: JSON.stringify({
           input: input
         })
       });
 
-      const data = await response.json();
+      const contentType = response.headers.get(\"content-type\") || \"\";
+      let data;
 
-      if (!response.ok) {
-        status.innerText = "Błąd API: " + JSON.stringify(data);
+      if (contentType.includes(\"application/json\")) {
+        data = await response.json();
+      } else {
+        const rawText = await response.text();
+        status.innerText = \"Błąd: backend nie zwrócił JSON. Odpowiedź:\\n\\n\" + rawText;
         return;
       }
 
-      status.innerText = "OK: " + JSON.stringify(data, null, 2);
+      if (!response.ok) {
+        status.innerText = \"Błąd API: \" + JSON.stringify(data, null, 2);
+        return;
+      }
+
+      status.innerText = \"OK: \" + JSON.stringify(data, null, 2);
+
+      const result = data.result || data;
+
+      if (result.author) {
+        document.getElementById(\"authorName\").value = result.author;
+      }
+      if (result.title) {
+        document.getElementById(\"bookTitle\").value = result.title;
+      }
+      if (result.subtitle) {
+        document.getElementById(\"bookSubtitle\").value = result.subtitle;
+      }
+      if (result.category) {
+        document.getElementById(\"category\").value = result.category;
+      }
+      if (result.tone) {
+        document.getElementById(\"tone\").value = result.tone;
+      }
+
+      updatePreview();
+
     } catch (err) {
-      status.innerText = "Błąd: " + err.message;
+      status.innerText = \"Błąd: \" + err.message;
     }
   }
 
@@ -174,4 +204,4 @@
 </script>
 
 </body>
-</html>
+</html>"
