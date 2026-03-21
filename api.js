@@ -2,6 +2,21 @@ import express from "express";
 
 const router = express.Router();
 
+function safeParseJSON(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+
+    try {
+      return JSON.parse(match[0]);
+    } catch {
+      return null;
+    }
+  }
+}
+
 router.get("/author/analyze", (_req, res) => {
   return res.status(200).json({
     ok: true,
@@ -70,7 +85,7 @@ TITLE:
 - must be a compelling commercial product title
 - MUST NOT be a generic topic like "MLM", "Marketing", "Sales", "Business"
 - MUST sound like a real paid knowledge product people would want to buy
-- 2–5 words max
+- 2-5 words max
 - strong, clear, specific
 - should suggest transformation, method, system, roadmap, blueprint, playbook, framework or practical result
 - should fit an AiBook/workbook product, not an academic or traditional book
@@ -99,7 +114,7 @@ SUBTITLE:
 
 HOOK:
 - must be short
-- 4–10 words ideally
+- 4-10 words ideally
 - must sound like a product promise
 - should fit on a cover
 - should create desire, clarity or transformation
@@ -170,16 +185,14 @@ STRICT:
       });
     }
 
-    let cleaned = text
+    const cleaned = text
       .replace(/```json/g, "")
       .replace(/```/g, "")
       .trim();
 
-    let parsed;
+    const parsed = safeParseJSON(cleaned);
 
-    try {
-      parsed = JSON.parse(cleaned);
-    } catch {
+    if (!parsed) {
       return res.status(500).json({
         ok: false,
         error: "Invalid JSON from AI",
@@ -187,6 +200,10 @@ STRICT:
         cleaned,
         openai: data
       });
+    }
+
+    if (parsed.hook) {
+      parsed.hook = String(parsed.hook).slice(0, 120);
     }
 
     return res.status(200).json({
