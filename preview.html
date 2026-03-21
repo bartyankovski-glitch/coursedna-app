@@ -45,14 +45,14 @@
       padding: 12px 16px;
       border: none;
       border-radius: 10px;
-      background: linear-gradient(135deg, #4f46e5, #2563eb);
+      background: linear-gradient(135deg,#4f46e5,#2563eb);
       color: white;
       font-weight: bold;
       cursor: pointer;
     }
 
     .preview {
-      background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+      background: linear-gradient(135deg,#1e3a8a,#3b82f6);
       color: white;
       padding: 30px;
       border-radius: 16px;
@@ -70,127 +70,179 @@
       min-height: 24px;
     }
 
+    .label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 8px;
+      margin-top: 8px;
+    }
+
     h2, h3, p {
       margin-top: 0;
     }
   </style>
 </head>
+
 <body>
 
-  <div class="wrap">
+<div class="wrap">
 
-    <div class="card">
-      <h3>AUTO mode (beta)</h3>
+  <div class="card">
+    <h3>AUTO mode (beta)</h3>
 
-      <textarea id="authorContext" placeholder="Wklej LinkedIn, opis książek, bio autora..."></textarea>
+    <label class="label" for="linkedinInput">LinkedIn / bio autora</label>
+    <textarea
+      id="linkedinInput"
+      placeholder="Wklej bio z LinkedIn, headline, about, doświadczenie, specjalizację..."
+    ></textarea>
 
-      <button onclick="analyzeAuthor()">Analizuj autora</button>
+    <label class="label" for="authorContext">Opisy książek / dodatkowy kontekst</label>
+    <textarea
+      id="authorContext"
+      placeholder="Wklej opisy książek, notki z księgarni, tematy szkoleń, dodatkowe informacje..."
+    ></textarea>
 
-      <div id="analyzeStatus"></div>
-    </div>
+    <button onclick="analyzeAuthor()">Analizuj autora</button>
 
-    <div class="card">
-      <input id="authorName" placeholder="Autor">
-      <input id="bookTitle" placeholder="Tytuł książki">
-      <input id="bookSubtitle" placeholder="Podtytuł">
-      <input id="category" placeholder="Kategoria">
-
-      <select id="tone">
-        <option value="premium">premium</option>
-        <option value="classic">classic</option>
-        <option value="modern">modern</option>
-        <option value="bold">bold</option>
-      </select>
-
-      <div class="preview">
-        <h2 id="previewAuthor">Autor</h2>
-        <h3 id="previewTitle">Tytuł książki</h3>
-        <p id="previewSubtitle">Podtytuł</p>
-        <p id="previewCategory">Kategoria</p>
-        <p id="previewTone">Tone: premium</p>
-      </div>
-    </div>
-
+    <div id="analyzeStatus"></div>
   </div>
 
-  <script>
-    function updatePreview() {
-      const authorName = document.getElementById("authorName").value || "Autor";
-      const bookTitle = document.getElementById("bookTitle").value || "Tytuł książki";
-      const bookSubtitle = document.getElementById("bookSubtitle").value || "Podtytuł";
-      const category = document.getElementById("category").value || "Kategoria";
-      const tone = document.getElementById("tone").value || "premium";
+  <div class="card">
+    <input id="authorName" placeholder="Autor">
+    <input id="bookTitle" placeholder="Tytuł książki">
+    <input id="bookSubtitle" placeholder="Podtytuł">
+    <input id="category" placeholder="Kategoria">
 
-      document.getElementById("previewAuthor").innerText = authorName;
-      document.getElementById("previewTitle").innerText = bookTitle;
-      document.getElementById("previewSubtitle").innerText = bookSubtitle;
-      document.getElementById("previewCategory").innerText = category;
-      document.getElementById("previewTone").innerText = "Tone: " + tone;
+    <select id="tone">
+      <option value="premium">premium</option>
+      <option value="classic">classic</option>
+      <option value="modern">modern</option>
+      <option value="bold">bold</option>
+    </select>
+
+    <div class="preview">
+      <h2 id="previewAuthor">Autor</h2>
+      <h3 id="previewTitle">Tytuł książki</h3>
+      <p id="previewSubtitle">Podtytuł</p>
+      <p id="previewCategory">Kategoria</p>
+      <p id="previewTone">Tone: premium</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function normalizeTone(tone) {
+    if (!tone) return "premium";
+
+    const value = String(tone).toLowerCase().trim();
+
+    if (["premium", "classic", "modern", "bold"].includes(value)) {
+      return value;
     }
 
-    document.getElementById("authorName").addEventListener("input", updatePreview);
-    document.getElementById("bookTitle").addEventListener("input", updatePreview);
-    document.getElementById("bookSubtitle").addEventListener("input", updatePreview);
-    document.getElementById("category").addEventListener("input", updatePreview);
-    document.getElementById("tone").addEventListener("change", updatePreview);
+    if (["informative", "professional", "expert", "business"].includes(value)) {
+      return "premium";
+    }
 
-    async function analyzeAuthor() {
-      const status = document.getElementById("analyzeStatus");
-      const input = document.getElementById("authorContext").value;
+    if (["elegant", "serious", "trust", "trusted"].includes(value)) {
+      return "classic";
+    }
 
-      if (!input.trim()) {
-        status.innerText = "Wklej najpierw tekst do analizy.";
+    if (["fresh", "clean", "minimal", "contemporary"].includes(value)) {
+      return "modern";
+    }
+
+    if (["strong", "aggressive", "direct", "dynamic"].includes(value)) {
+      return "bold";
+    }
+
+    return "premium";
+  }
+
+  function updatePreview() {
+    const authorName = document.getElementById("authorName").value || "Autor";
+    const bookTitle = document.getElementById("bookTitle").value || "Tytuł książki";
+    const bookSubtitle = document.getElementById("bookSubtitle").value || "Podtytuł";
+    const category = document.getElementById("category").value || "Kategoria";
+    const tone = document.getElementById("tone").value || "premium";
+
+    document.getElementById("previewAuthor").innerText = authorName;
+    document.getElementById("previewTitle").innerText = bookTitle;
+    document.getElementById("previewSubtitle").innerText = bookSubtitle;
+    document.getElementById("previewCategory").innerText = category;
+    document.getElementById("previewTone").innerText = "Tone: " + tone;
+  }
+
+  document.getElementById("authorName").addEventListener("input", updatePreview);
+  document.getElementById("bookTitle").addEventListener("input", updatePreview);
+  document.getElementById("bookSubtitle").addEventListener("input", updatePreview);
+  document.getElementById("category").addEventListener("input", updatePreview);
+  document.getElementById("tone").addEventListener("change", updatePreview);
+
+  async function analyzeAuthor() {
+    const status = document.getElementById("analyzeStatus");
+    const linkedinInput = document.getElementById("linkedinInput").value.trim();
+    const authorContext = document.getElementById("authorContext").value.trim();
+
+    if (!linkedinInput && !authorContext) {
+      status.innerText = "Wklej najpierw tekst LinkedIn albo opisy książek.";
+      return;
+    }
+
+    status.innerText = "Analizuję...";
+
+    try {
+      const response = await fetch("/api/author/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          linkedinInput,
+          authorContext
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        status.innerText = "Błąd API: " + JSON.stringify(data, null, 2);
         return;
       }
 
-      status.innerText = "Analizuję...";
+      const result = data.result || data;
 
-      try {
-        const response = await fetch("/api/author/analyze", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            input: input
-          })
-        });
+      status.innerText = "OK: " + JSON.stringify(result, null, 2);
 
-        const data = await response.json();
-
-        if (!response.ok) {
-          status.innerText = "Błąd API: " + JSON.stringify(data, null, 2);
-          return;
-        }
-
-        const result = data.result || data;
-
-        status.innerText = "OK: " + JSON.stringify(result, null, 2);
-
-        if (result.author) {
-          document.getElementById("authorName").value = result.author;
-        }
-        if (result.title) {
-          document.getElementById("bookTitle").value = result.title;
-        }
-        if (result.subtitle) {
-          document.getElementById("bookSubtitle").value = result.subtitle;
-        }
-        if (result.category) {
-          document.getElementById("category").value = result.category;
-        }
-        if (result.tone) {
-          document.getElementById("tone").value = result.tone;
-        }
-
-        updatePreview();
-      } catch (err) {
-        status.innerText = "Błąd: " + err.message;
+      if (result.author) {
+        document.getElementById("authorName").value = result.author;
       }
-    }
 
-    updatePreview();
-  </script>
+      if (result.title) {
+        document.getElementById("bookTitle").value = result.title;
+      }
+
+      if (result.subtitle) {
+        document.getElementById("bookSubtitle").value = result.subtitle;
+      }
+
+      if (result.category) {
+        document.getElementById("category").value = result.category;
+      }
+
+      if (result.tone) {
+        document.getElementById("tone").value = normalizeTone(result.tone);
+      }
+
+      updatePreview();
+    } catch (err) {
+      status.innerText = "Błąd: " + err.message;
+    }
+  }
+
+  updatePreview();
+</script>
 
 </body>
 </html>
