@@ -137,6 +137,7 @@
       font-weight: 800;
       margin: 0 0 18px;
       max-width: 95%;
+      text-wrap: balance;
     }
 
     .cover-subtitle {
@@ -257,7 +258,7 @@
           <div id="cover" class="cover premium">
             <div>
               <div class="cover-topline" id="coverTopline">AIBOOK WORKBOOK</div>
-              <div class="cover-hook" id="coverHook">Praktyczne narzędzie transformacyjne do wdrożenia wiedzy.</div>
+              <div class="cover-hook" id="coverHook">Build a system that turns knowledge into clients</div>
               <h1 class="cover-title" id="coverTitle">Tytuł AiBooka</h1>
               <div class="cover-divider"></div>
               <div class="cover-subtitle" id="coverSubtitle">Podtytuł opisujący transformację, system i wartość produktu.</div>
@@ -306,10 +307,14 @@
     function updatePreview() {
       const authorName = document.getElementById("authorName").value || "Autor";
       const bookTitle = document.getElementById("bookTitle").value || "Tytuł AiBooka";
-      const bookSubtitle = document.getElementById("bookSubtitle").value || "Podtytuł opisujący transformację, system i wartość produktu.";
+      const bookSubtitle =
+        document.getElementById("bookSubtitle").value ||
+        "Podtytuł opisujący transformację, system i wartość produktu.";
       const category = document.getElementById("category").value || "Business";
       const tone = document.getElementById("tone").value || "premium";
-      const hook = document.getElementById("hook").value || "Praktyczne narzędzie transformacyjne do wdrożenia wiedzy.";
+      const hook =
+        document.getElementById("hook").value ||
+        "Build a system that turns knowledge into clients";
 
       const cover = document.getElementById("cover");
       cover.className = "cover " + tone;
