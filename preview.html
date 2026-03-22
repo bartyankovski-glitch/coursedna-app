@@ -15,16 +15,17 @@
     }
 
     .wrap {
-      max-width: 1180px;
+      max-width: 1280px;
       margin: 0 auto;
     }
 
     .card {
       background: #fff;
-      border: 1px solid #eee;
-      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
       padding: 20px;
       margin-bottom: 20px;
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.04);
     }
 
     .grid {
@@ -34,12 +35,17 @@
       align-items: start;
     }
 
+    .stack {
+      display: grid;
+      gap: 20px;
+    }
+
     input, select, textarea {
       width: 100%;
       padding: 12px;
       margin-bottom: 10px;
-      border-radius: 8px;
-      border: 1px solid #ddd;
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
       box-sizing: border-box;
       font-size: 14px;
       background: #fff;
@@ -47,8 +53,19 @@
     }
 
     textarea {
-      min-height: 120px;
+      min-height: 140px;
       resize: vertical;
+    }
+
+    .textarea-lg {
+      min-height: 180px;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 8px;
     }
 
     button {
@@ -61,21 +78,44 @@
       cursor: pointer;
     }
 
+    button.secondary {
+      background: linear-gradient(135deg, #0f172a, #334155);
+    }
+
     .label {
       display: block;
       font-weight: bold;
       margin: 10px 0 8px;
     }
 
-    #analyzeStatus {
+    .status-box {
       margin-top: 12px;
       padding: 12px;
-      border-radius: 8px;
-      background: #f1f5f9;
+      border-radius: 10px;
+      background: #f8fafc;
       border: 1px solid #dbe2ea;
       white-space: pre-wrap;
       word-break: break-word;
       min-height: 24px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .mini-preview {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      color: #0f172a;
+    }
+
+    .muted {
+      color: #64748b;
+    }
+
+    .small {
+      font-size: 13px;
     }
 
     .cover-wrap {
@@ -201,21 +241,103 @@
       letter-spacing: 0.08em;
     }
 
-    .mini-preview {
-      margin-top: 14px;
-      padding: 12px;
-      border-radius: 10px;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      color: #0f172a;
+    .section-title {
+      margin: 0 0 12px;
+      font-size: 22px;
     }
 
-    .muted {
+    .subgrid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .outline-meta {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .outline-box,
+    .sample-box,
+    .decision-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .chapter-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .chapter-item {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px;
+      background: #fff;
+    }
+
+    .chapter-number {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
       color: #64748b;
+      margin-bottom: 6px;
+      font-weight: 700;
+    }
+
+    .chapter-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .chapter-goal,
+    .chapter-exercise {
+      font-size: 14px;
+      line-height: 1.5;
+      color: #334155;
+      margin-bottom: 8px;
+    }
+
+    .sample-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .sample-block {
+      margin-bottom: 12px;
+      line-height: 1.6;
+      color: #334155;
+    }
+
+    .decision-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .decision-item {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px;
+      background: #fff;
+    }
+
+    .decision-label {
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .hidden {
+      display: none;
     }
 
     @media (max-width: 980px) {
-      .grid {
+      .grid,
+      .subgrid {
         grid-template-columns: 1fr;
       }
 
@@ -227,82 +349,138 @@
   </style>
 </head>
 <body>
-
   <div class="wrap">
-
     <div class="card">
       <h2>AiBook Generator</h2>
-      <p class="muted">Wklej osobno bio / kontekst z LinkedIn oraz opisy książek lub dodatkowy materiał źródłowy.</p>
+      <p class="muted">
+        Wklej osobno bio / kontekst z LinkedIn, opisy książek oraz większy materiał źródłowy.
+        Następnie możesz wygenerować sam positioning albo pełny preview produktu.
+      </p>
     </div>
 
     <div class="grid">
-      <div class="card">
-        <label class="label" for="linkedinInput">LinkedIn / bio autora</label>
-        <textarea
-          id="linkedinInput"
-          placeholder="Wklej bio z LinkedIn, headline, about, doświadczenie, specjalizację..."
-        ></textarea>
+      <div class="stack">
+        <div class="card">
+          <label class="label" for="linkedinInput">LinkedIn / bio autora</label>
+          <textarea
+            id="linkedinInput"
+            placeholder="Wklej bio z LinkedIn, headline, about, doświadczenie, specjalizację..."
+          ></textarea>
 
-        <label class="label" for="authorContext">Opisy książek / dodatkowy kontekst</label>
-        <textarea
-          id="authorContext"
-          placeholder="Wklej opisy książek, notki z księgarni, tematy szkoleń, dodatkowe informacje..."
-        ></textarea>
+          <label class="label" for="authorContext">Opisy książek / dodatkowy kontekst</label>
+          <textarea
+            id="authorContext"
+            placeholder="Wklej opisy książek, notki z księgarni, tematy szkoleń, dodatkowe informacje..."
+          ></textarea>
 
-        <button onclick="analyzeAuthor()">Analizuj autora</button>
+          <label class="label" for="sourceText">Większy materiał źródłowy / fragment ebooka / PDF po wklejeniu</label>
+          <textarea
+            id="sourceText"
+            class="textarea-lg"
+            placeholder="Wklej większy materiał autora: ebook, rozdział, transkrypcję, notatki szkoleniowe, PDF po skopiowaniu tekstu..."
+          ></textarea>
 
-        <div id="analyzeStatus"></div>
+          <div class="btn-row">
+            <button onclick="analyzeAuthor()">Analizuj autora</button>
+            <button class="secondary" onclick="generatePreview()">Generuj preview produktu</button>
+          </div>
 
-        <div class="mini-preview">
-          <label class="label" for="authorName">Autor</label>
-          <input id="authorName" placeholder="Autor">
+          <div id="analyzeStatus" class="status-box"></div>
 
-          <label class="label" for="bookTitle">Tytuł</label>
-          <input id="bookTitle" placeholder="Tytuł książki">
+          <div class="mini-preview">
+            <label class="label" for="authorName">Autor</label>
+            <input id="authorName" placeholder="Autor">
 
-          <label class="label" for="bookSubtitle">Podtytuł</label>
-          <input id="bookSubtitle" placeholder="Podtytuł">
+            <label class="label" for="bookTitle">Tytuł</label>
+            <input id="bookTitle" placeholder="Tytuł książki">
 
-          <label class="label" for="category">Kategoria</label>
-          <input id="category" placeholder="Kategoria">
+            <label class="label" for="bookSubtitle">Podtytuł</label>
+            <input id="bookSubtitle" placeholder="Podtytuł">
 
-          <label class="label" for="hook">Hook</label>
-          <input id="hook" placeholder="Krótka obietnica / one-liner">
+            <label class="label" for="category">Kategoria</label>
+            <input id="category" placeholder="Kategoria">
 
-          <label class="label" for="tone">Tone</label>
-          <select id="tone">
-            <option value="premium">premium</option>
-            <option value="classic">classic</option>
-            <option value="modern">modern</option>
-            <option value="bold">bold</option>
-          </select>
+            <label class="label" for="hook">Hook</label>
+            <input id="hook" placeholder="Krótka obietnica / one-liner">
+
+            <label class="label" for="tone">Tone</label>
+            <select id="tone">
+              <option value="premium">premium</option>
+              <option value="classic">classic</option>
+              <option value="modern">modern</option>
+              <option value="bold">bold</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      <div class="card">
-        <div class="cover-wrap">
-          <div class="cover-shell">
-            <div class="cover-badge">WORKBOOK SYSTEM</div>
+      <div class="stack">
+        <div class="card">
+          <div class="cover-wrap">
+            <div class="cover-shell">
+              <div class="cover-badge" id="coverEyebrow">WORKBOOK SYSTEM</div>
 
-            <div id="cover" class="cover premium">
-              <div>
-                <div class="cover-topline" id="coverTopline">AIBOOK WORKBOOK</div>
-                <div class="cover-hook" id="coverHook">Build a system that turns knowledge into clients</div>
-                <h1 class="cover-title" id="coverTitle">Tytuł AiBooka</h1>
-                <div class="cover-divider"></div>
-                <div class="cover-subtitle" id="coverSubtitle">Podtytuł opisujący transformację, system i wartość produktu.</div>
-              </div>
+              <div id="cover" class="cover premium">
+                <div>
+                  <div class="cover-topline" id="coverTopline">AIBOOK WORKBOOK</div>
+                  <div class="cover-hook" id="coverHook">Build a system that turns knowledge into clients</div>
+                  <h1 class="cover-title" id="coverTitle">Tytuł AiBooka</h1>
+                  <div class="cover-divider"></div>
+                  <div class="cover-subtitle" id="coverSubtitle">Podtytuł opisujący transformację, system i wartość produktu.</div>
+                </div>
 
-              <div class="cover-bottom">
-                <div class="cover-author" id="coverAuthor">Autor</div>
-                <div class="cover-meta" id="coverMeta">Business • premium</div>
+                <div class="cover-bottom">
+                  <div class="cover-author" id="coverAuthor">Autor</div>
+                  <div class="cover-meta" id="coverMeta">Business • premium</div>
+                </div>
               </div>
             </div>
           </div>
         </div>
+
+        <div class="card hidden" id="previewOutputCard">
+          <h3 class="section-title">Preview produktu</h3>
+
+          <div class="subgrid">
+            <div>
+              <div class="outline-box">
+                <div class="label" style="margin-top:0;">Obietnica</div>
+                <div id="outlinePromise" class="small muted">Brak danych.</div>
+              </div>
+
+              <div class="outline-box" style="margin-top:12px;">
+                <div class="label" style="margin-top:0;">Dla kogo</div>
+                <div id="outlineReader" class="small muted">Brak danych.</div>
+              </div>
+
+              <div class="outline-box" style="margin-top:12px;">
+                <div class="label" style="margin-top:0;">Transformacja</div>
+                <div id="outlineTransformation" class="small muted">Brak danych.</div>
+              </div>
+            </div>
+
+            <div>
+              <div class="sample-box">
+                <div class="label" style="margin-top:0;">Fragment / sample</div>
+                <div id="sampleContent" class="small muted">Brak danych.</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:20px;">
+            <div class="label" style="margin-top:0;">Spis treści / outline</div>
+            <div id="chapterList" class="chapter-list"></div>
+          </div>
+
+          <div style="margin-top:20px;">
+            <div class="label" style="margin-top:0;">Ścieżki decyzji autora</div>
+            <div id="decisionList" class="decision-list"></div>
+          </div>
+
+          <div id="previewStatus" class="status-box" style="margin-top:18px;"></div>
+        </div>
       </div>
     </div>
-
   </div>
 
   <script>
@@ -334,6 +512,14 @@
       return "premium";
     }
 
+    function getFormData() {
+      return {
+        linkedinInput: document.getElementById("linkedinInput").value.trim(),
+        authorContext: document.getElementById("authorContext").value.trim(),
+        sourceText: document.getElementById("sourceText").value.trim()
+      };
+    }
+
     function updatePreview() {
       const authorName = document.getElementById("authorName").value || "Autor";
       const bookTitle = document.getElementById("bookTitle").value || "Tytuł AiBooka";
@@ -349,6 +535,8 @@
       const cover = document.getElementById("cover");
       cover.className = "cover " + tone;
 
+      document.getElementById("coverTopline").innerText = "AIBOOK WORKBOOK";
+      document.getElementById("coverEyebrow").innerText = "WORKBOOK SYSTEM";
       document.getElementById("coverHook").innerText = hook;
       document.getElementById("coverTitle").innerText = bookTitle;
       document.getElementById("coverSubtitle").innerText = bookSubtitle;
@@ -356,7 +544,133 @@
       document.getElementById("coverMeta").innerText = category + " • " + tone;
     }
 
-    ["authorName", "bookTitle", "bookSubtitle", "category", "hook"].forEach(id => {
+    function applyPositioning(result) {
+      if (!result) return;
+
+      if (result.author) {
+        document.getElementById("authorName").value = result.author;
+      }
+
+      if (result.title) {
+        document.getElementById("bookTitle").value = result.title;
+      }
+
+      if (result.subtitle) {
+        document.getElementById("bookSubtitle").value = result.subtitle;
+      }
+
+      if (result.category) {
+        document.getElementById("category").value = result.category;
+      }
+
+      if (result.hook) {
+        document.getElementById("hook").value = result.hook;
+      }
+
+      if (result.tone) {
+        document.getElementById("tone").value = normalizeTone(result.tone);
+      }
+
+      updatePreview();
+    }
+
+    function renderOutline(outline) {
+      document.getElementById("outlinePromise").innerText =
+        outline?.promise || "Brak danych.";
+      document.getElementById("outlineReader").innerText =
+        outline?.reader || "Brak danych.";
+      document.getElementById("outlineTransformation").innerText =
+        outline?.transformation || "Brak danych.";
+
+      const chapterList = document.getElementById("chapterList");
+      chapterList.innerHTML = "";
+
+      const chapters = outline?.chapters || [];
+      if (!chapters.length) {
+        chapterList.innerHTML = '<div class="muted small">Brak rozdziałów.</div>';
+        return;
+      }
+
+      chapters.forEach((chapter) => {
+        const item = document.createElement("div");
+        item.className = "chapter-item";
+        item.innerHTML = `
+          <div class="chapter-number">Rozdział ${chapter.number || ""}</div>
+          <div class="chapter-title">${escapeHtml(chapter.title || "")}</div>
+          <div class="chapter-goal"><strong>Cel:</strong> ${escapeHtml(chapter.goal || "")}</div>
+          <div class="chapter-exercise"><strong>Ćwiczenie:</strong> ${escapeHtml(chapter.exercise || "")}</div>
+        `;
+        chapterList.appendChild(item);
+      });
+    }
+
+    function renderSample(sample) {
+      const sampleContent = document.getElementById("sampleContent");
+
+      if (!sample) {
+        sampleContent.innerHTML = '<span class="muted">Brak danych.</span>';
+        return;
+      }
+
+      sampleContent.innerHTML = `
+        <div class="sample-title">${escapeHtml(sample.chapterTitle || "")}</div>
+        <div class="sample-block">${escapeHtml(sample.intro || "")}</div>
+        <div class="sample-block"><strong>${escapeHtml(sample.exerciseTitle || "")}</strong><br>${escapeHtml(sample.exerciseText || "")}</div>
+        <div class="sample-block"><strong>Pytanie refleksyjne:</strong><br>${escapeHtml(sample.reflectionPrompt || "")}</div>
+      `;
+    }
+
+    function renderDecisionPaths(paths) {
+      const decisionList = document.getElementById("decisionList");
+      decisionList.innerHTML = "";
+
+      if (!paths || !paths.length) {
+        decisionList.innerHTML = '<div class="muted small">Brak danych.</div>';
+        return;
+      }
+
+      paths.forEach((item) => {
+        const el = document.createElement("div");
+        el.className = "decision-item";
+        el.innerHTML = `
+          <div class="decision-label">${escapeHtml(item.label || "")}</div>
+          <div class="small muted">${escapeHtml(item.description || "")}</div>
+        `;
+        decisionList.appendChild(el);
+      });
+    }
+
+    function applyPreview(preview) {
+      if (!preview) return;
+
+      if (preview.cover) {
+        document.getElementById("coverEyebrow").innerText =
+          preview.cover.eyebrow || "WORKBOOK SYSTEM";
+        document.getElementById("coverTopline").innerText =
+          preview.cover.seriesLabel || "AIBOOK WORKBOOK";
+      }
+
+      if (preview.positioning) {
+        applyPositioning(preview.positioning);
+      }
+
+      renderOutline(preview.outline || null);
+      renderSample(preview.sample || null);
+      renderDecisionPaths(preview.decisionPaths || []);
+
+      document.getElementById("previewOutputCard").classList.remove("hidden");
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    ["authorName", "bookTitle", "bookSubtitle", "category", "hook"].forEach((id) => {
       const el = document.getElementById(id);
       el.addEventListener("input", updatePreview);
       el.addEventListener("keyup", updatePreview);
@@ -367,15 +681,14 @@
 
     async function analyzeAuthor() {
       const status = document.getElementById("analyzeStatus");
-      const linkedinInput = document.getElementById("linkedinInput").value.trim();
-      const authorContext = document.getElementById("authorContext").value.trim();
+      const { linkedinInput, authorContext, sourceText } = getFormData();
 
-      if (!linkedinInput && !authorContext) {
-        status.innerText = "Wklej najpierw tekst LinkedIn albo opisy książek.";
+      if (!linkedinInput && !authorContext && !sourceText) {
+        status.innerText = "Wklej najpierw tekst autora albo materiał źródłowy.";
         return;
       }
 
-      status.innerText = "Analizuję...";
+      status.innerText = "Analizuję autora...";
 
       try {
         const response = await fetch("/api/author/analyze", {
@@ -385,7 +698,8 @@
           },
           body: JSON.stringify({
             linkedinInput,
-            authorContext
+            authorContext,
+            sourceText
           })
         });
 
@@ -397,41 +711,69 @@
         }
 
         const result = data.result || data;
+        applyPositioning(result);
 
-        status.innerText = "OK: " + JSON.stringify(result, null, 2);
-
-        if (result.author) {
-          document.getElementById("authorName").value = result.author;
-        }
-
-        if (result.title) {
-          document.getElementById("bookTitle").value = result.title;
-        }
-
-        if (result.subtitle) {
-          document.getElementById("bookSubtitle").value = result.subtitle;
-        }
-
-        if (result.category) {
-          document.getElementById("category").value = result.category;
-        }
-
-        if (result.hook) {
-          document.getElementById("hook").value = result.hook;
-        }
-
-        if (result.tone) {
-          document.getElementById("tone").value = normalizeTone(result.tone);
-        }
-
-        updatePreview();
+        status.innerText =
+          "OK / positioning:\n" + JSON.stringify(data, null, 2);
       } catch (err) {
         status.innerText = "Błąd: " + err.message;
       }
     }
 
+    async function generatePreview() {
+      const previewStatus = document.getElementById("previewStatus");
+      const analyzeStatus = document.getElementById("analyzeStatus");
+      const { linkedinInput, authorContext, sourceText } = getFormData();
+
+      if (!linkedinInput && !authorContext && !sourceText) {
+        previewStatus.innerText = "Wklej najpierw tekst autora albo materiał źródłowy.";
+        return;
+      }
+
+      document.getElementById("previewOutputCard").classList.remove("hidden");
+      previewStatus.innerText = "Generuję preview produktu...";
+      analyzeStatus.innerText = "Generuję pełny preview...";
+
+      try {
+        const response = await fetch("/api/generate-preview", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            linkedinInput,
+            authorContext,
+            sourceText,
+            options: {
+              language: "auto",
+              includeOutline: true,
+              includeSample: true,
+              includeDecisionPaths: true,
+              chapterCount: 7
+            }
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          previewStatus.innerText = "Błąd API: " + JSON.stringify(data, null, 2);
+          return;
+        }
+
+        applyPreview(data.preview);
+
+        previewStatus.innerText =
+          "OK / preview:\n" + JSON.stringify(data, null, 2);
+
+        analyzeStatus.innerText =
+          "Wygenerowano preview produktu.";
+      } catch (err) {
+        previewStatus.innerText = "Błąd: " + err.message;
+      }
+    }
+
     updatePreview();
   </script>
-
 </body>
-</html>
+  </html>
