@@ -256,6 +256,55 @@ function hasWeakHookStyle(hook, language) {
   return false;
 }
 
+function isGenericHook(hook, language) {
+  const normalized = normalizeTextForCompare(hook);
+
+  if (!normalized) return true;
+
+  const genericPatternsPl = [
+    "bez wysilku",
+    "bez wysiłku",
+    "latwo",
+    "łatwo",
+    "prosto",
+    "szybko",
+    "wiecej klientow",
+    "więcej klientów",
+    "lepsza sprzedaz",
+    "lepsza sprzedaż",
+    "wiekszy dochod",
+    "większy dochód",
+    "staly dochod",
+    "stały dochód",
+    "na wyciagniecie reki",
+    "na wyciągnięcie ręki",
+    "klient bez wysilku",
+    "klient bez wysiłku",
+    "rozwoj biznesu",
+    "rozwój biznesu"
+  ];
+
+  const genericPatternsEn = [
+    "easily",
+    "fast",
+    "simple",
+    "more clients",
+    "more sales",
+    "more income",
+    "client with ease",
+    "growth made easy",
+    "business growth"
+  ];
+
+  const patterns = language === "polish" ? genericPatternsPl : genericPatternsEn;
+
+  for (const pattern of patterns) {
+    if (normalized.includes(pattern)) return true;
+  }
+
+  return false;
+}
+
 function scoreHookQuality(hook, language) {
   const value = String(hook || "").trim();
   const normalized = normalizeTextForCompare(value);
@@ -269,6 +318,7 @@ function scoreHookQuality(hook, language) {
   if (words > 4) score -= 10;
   if (value.includes(",")) score -= 25;
   if (startsWithVerb(value, language)) score -= 30;
+  if (isGenericHook(value, language)) score -= 35;
 
   const genericWordsPl = [
     "klient",
@@ -509,6 +559,7 @@ BAD:
 "Build clients without chasing"
 "How to build trust"
 "Klient na wyciągnięcie ręki"
+"Klient bez wysiłku"
 
 GOOD:
 "Dochód z wiedzy"
@@ -611,9 +662,10 @@ STRICT:
       parsed.hook &&
       (
         hasWeakHookStyle(parsed.hook, detectedLanguage) ||
+        isGenericHook(parsed.hook, detectedLanguage) ||
         hasTooMuchOverlap(parsed.hook, parsed.subtitle) ||
         hasSemanticClash(parsed.hook, parsed.subtitle) ||
-        hookScore < 70
+        hookScore < 75
       );
 
     if (needsHookRepair) {
@@ -658,6 +710,9 @@ BAD:
 "Zbuduj trwałe relacje"
 "Odkryj system sprzedaży"
 "Klient na wyciągnięcie ręki"
+"Klient bez wysiłku"
+"Więcej klientów"
+"Lepsza sprzedaż"
 
 GOOD:
 "Dochód z wiedzy"
@@ -665,6 +720,8 @@ GOOD:
 "Klient bez pościgu"
 "Zaufanie zamiast presji"
 "Relacje, które sprzedają"
+"Autorytet zamiast pogoni"
+"Sprzedaż przez pozycję"
 `;
 
       const hookRepairUserPrompt = `
