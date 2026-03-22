@@ -47,7 +47,8 @@ function getMeaningfulWords(text) {
     "dla", "jest", "się", "który", "która", "które", "that", "into", "from", "with",
     "without", "the", "and", "for", "your", "this", "these", "those", "practical",
     "praktyczny", "workbook", "guide", "system", "framework", "mechanizm", "metoda",
-    "oraz", "przez", "który", "helps", "help", "using", "oparty", "oparta", "oparte"
+    "oraz", "przez", "który", "helps", "help", "using", "oparty", "oparta", "oparte",
+    "bardzo", "more", "most", "less"
   ]);
 
   return normalizeTextForCompare(text)
@@ -94,6 +95,8 @@ function hasSemanticClash(hook, subtitle) {
     ["rozmow", "rozmow"],
     ["dochód", "doch"],
     ["przych", "przych"],
+    ["zaufan", "zaufan"],
+    ["autorytet", "autorytet"],
     ["income", "income"],
     ["client", "client"],
     ["sale", "sale"],
@@ -102,7 +105,9 @@ function hasSemanticClash(hook, subtitle) {
     ["conversion", "conversion"],
     ["relationship", "relationship"],
     ["conversation", "conversation"],
-    ["revenue", "revenue"]
+    ["revenue", "revenue"],
+    ["trust", "trust"],
+    ["authority", "authority"]
   ];
 
   let matches = 0;
@@ -176,7 +181,11 @@ function startsWithVerb(hook, language) {
     "zdobadz",
     "zdobądź",
     "pokonaj",
-    "wykorzystaj"
+    "wykorzystaj",
+    "zmien",
+    "zmień",
+    "przeksztalc",
+    "przekształć"
   ];
 
   const englishVerbStarts = [
@@ -192,7 +201,8 @@ function startsWithVerb(hook, language) {
     "win",
     "use",
     "master",
-    "transform"
+    "transform",
+    "change"
   ];
 
   if (language === "polish") {
@@ -219,7 +229,9 @@ function hasWeakHookStyle(hook, language) {
     "uzyskaj ",
     "zbuduj ",
     "stworz ",
-    "stwórz "
+    "stwórz ",
+    "zmien ",
+    "zmień "
   ];
 
   const badPhrasesEn = [
@@ -229,7 +241,8 @@ function hasWeakHookStyle(hook, language) {
     "discover ",
     "build ",
     "gain ",
-    "create "
+    "create ",
+    "change "
   ];
 
   const patterns = language === "polish" ? badPhrasesPl : badPhrasesEn;
@@ -241,6 +254,91 @@ function hasWeakHookStyle(hook, language) {
   }
 
   return false;
+}
+
+function scoreHookQuality(hook, language) {
+  const value = String(hook || "").trim();
+  const normalized = normalizeTextForCompare(value);
+
+  if (!normalized) return 0;
+
+  let score = 100;
+  const words = countWords(value);
+
+  if (words > 6) score -= 40;
+  if (words > 4) score -= 10;
+  if (value.includes(",")) score -= 25;
+  if (startsWithVerb(value, language)) score -= 30;
+
+  const genericWordsPl = [
+    "klient",
+    "klienci",
+    "sprzedaż",
+    "dochód",
+    "dochody",
+    "wiedza",
+    "biznes",
+    "relacje"
+  ];
+
+  const genericWordsEn = [
+    "client",
+    "clients",
+    "sales",
+    "income",
+    "business",
+    "knowledge",
+    "relationships"
+  ];
+
+  const contrastWordsPl = [
+    "bez",
+    "zamiast",
+    "presji",
+    "pościgu",
+    "zaufania",
+    "autorytetu",
+    "konwersji"
+  ];
+
+  const contrastWordsEn = [
+    "without",
+    "instead",
+    "trust",
+    "authority",
+    "conversion",
+    "pressure"
+  ];
+
+  const genericWords = language === "polish" ? genericWordsPl : genericWordsEn;
+  const contrastWords = language === "polish" ? contrastWordsPl : contrastWordsEn;
+
+  let genericHits = 0;
+  for (const word of genericWords) {
+    if (normalized.includes(word)) genericHits++;
+  }
+
+  if (genericHits >= 3) score -= 20;
+  if (genericHits >= 4) score -= 15;
+
+  let contrastHits = 0;
+  for (const word of contrastWords) {
+    if (normalized.includes(word)) contrastHits++;
+  }
+
+  if (contrastHits >= 1) score += 10;
+
+  const bannedStartsPl = ["uzyskaj", "zbuduj", "odkryj", "stwórz", "stworz", "zmień", "zmien"];
+  const bannedStartsEn = ["build", "discover", "gain", "create", "change"];
+  const firstWord = normalized.split(" ")[0] || "";
+  const bannedStarts = language === "polish" ? bannedStartsPl : bannedStartsEn;
+
+  if (bannedStarts.includes(firstWord)) score -= 20;
+
+  if (score < 0) score = 0;
+  if (score > 100) score = 100;
+
+  return score;
 }
 
 async function callOpenAI(messages, temperature = 0.85) {
@@ -400,6 +498,9 @@ STRICT RULES:
 - NO commas
 - NO multiple ideas
 - NO full sentences
+- must express a DISTINCT ANGLE or viewpoint
+- must NOT sound generic or like a common slogan
+- prefer contrast, tension or unexpected phrasing
 
 BAD:
 "Uzyskaj stabilny dochód z wiedzy"
@@ -407,6 +508,7 @@ BAD:
 "Odkryj system sprzedaży"
 "Build clients without chasing"
 "How to build trust"
+"Klient na wyciągnięcie ręki"
 
 GOOD:
 "Dochód z wiedzy"
@@ -503,11 +605,16 @@ STRICT:
 
     trimResultFields(parsed);
 
+    let hookScore = scoreHookQuality(parsed.hook, detectedLanguage);
+
     const needsHookRepair =
       parsed.hook &&
-      (hasWeakHookStyle(parsed.hook, detectedLanguage) ||
+      (
+        hasWeakHookStyle(parsed.hook, detectedLanguage) ||
         hasTooMuchOverlap(parsed.hook, parsed.subtitle) ||
-        hasSemanticClash(parsed.hook, parsed.subtitle));
+        hasSemanticClash(parsed.hook, parsed.subtitle) ||
+        hookScore < 70
+      );
 
     if (needsHookRepair) {
       const hookRepairSystemPrompt = `
@@ -534,6 +641,9 @@ GOAL:
 - hook must NOT start with a verb
 - hook must NOT repeat subtitle meaning
 - hook must add a new angle
+- hook must express a DISTINCT ANGLE or viewpoint
+- hook must NOT sound generic or like a common slogan
+- prefer contrast, tension or unexpected phrasing
 
 STRICT RULES:
 - max 6 words
@@ -547,6 +657,7 @@ BAD:
 "Uzyskaj stabilny dochód z wiedzy"
 "Zbuduj trwałe relacje"
 "Odkryj system sprzedaży"
+"Klient na wyciągnięcie ręki"
 
 GOOD:
 "Dochód z wiedzy"
@@ -591,6 +702,8 @@ Rewrite the hook now.
           parsed.hook = String(repairedHook.hook).trim().slice(0, 80);
         }
       }
+
+      hookScore = scoreHookQuality(parsed.hook, detectedLanguage);
     }
 
     const needsSubtitleRepair =
@@ -677,6 +790,7 @@ Make the subtitle more about mechanism, structure, implementation or process.
     return res.status(200).json({
       ok: true,
       language: detectedLanguage,
+      hookScore,
       result: parsed
     });
   } catch (err) {
