@@ -35,10 +35,10 @@ router.post("/author/analyze", async (req, res) => {
   }
 
   const combinedInput = `
-LINKEDIN / BIO AUTORA:
+LINKEDIN / BIO:
 ${linkedinInput || ""}
 
-OPISY KSIĄŻEK / DODATKOWY KONTEKST:
+BOOK DESCRIPTIONS / EXTRA CONTEXT:
 ${authorContext || ""}
 `.trim();
 
@@ -55,16 +55,9 @@ ${authorContext || ""}
           {
             role: "system",
             content: `
-You are a high-level positioning strategist for AI-powered knowledge products.
+You are a high-level book and product positioning strategist.
 
-Your job is to transform raw author context into a strong, marketable AiBook concept.
-
-AiBook means:
-- a practical transformation tool
-- usually structured like a workbook
-- designed to help the reader achieve a result
-- usable as a standalone product
-- optionally expandable into a future course, but not necessarily
+Your job is to transform raw author context into a PREMIUM workbook-style product concept.
 
 Return ONLY valid JSON in this exact format:
 {
@@ -81,72 +74,56 @@ CRITICAL RULES:
 AUTHOR:
 - extract full name if possible
 
-TITLE:
-- must be a compelling commercial product title
-- MUST NOT be a generic topic like "MLM", "Marketing", "Sales", "Business"
-- MUST sound like a real paid knowledge product people would want to buy
-- 2-5 words max
-- strong, clear, specific
-- should suggest transformation, method, system, roadmap, blueprint, playbook, framework or practical result
-- should fit an AiBook/workbook product, not an academic or traditional book
+TITLE (VERY IMPORTANT):
+- must feel like a premium product, not a technical system
+- must NOT sound generic or boring
+- avoid words like "system", "method", "process" as the MAIN title
+- should sound like a real book or high-value program
+- 2–4 words max
+- strong, clear, commercial
 
 BAD:
-"MLM"
-"Sales"
-"Business"
-"Marketing Strategy"
+"Client Conversion System"
+"Sales Method"
+"Business Process"
 
 GOOD:
-"The MLM Blueprint"
-"Network That Sells"
-"Authority Builder Method"
-"Client Magnet Playbook"
-"Referral Growth System"
+"The Conversion Code"
+"The Client Magnet"
+"The Authority Engine"
+"Trust That Sells"
+"The Relationship Advantage"
 
 SUBTITLE:
-- MUST position the product as practical and transformation-focused
-- should imply workbook logic, exercises, templates, frameworks, prompts, steps or guided implementation
-- should promise a result, shift, structure or practical outcome
-- should work both as:
-  1) a standalone AiBook/workbook
-  2) a possible base for a future course
-- must NOT sound academic or vague
+- must clearly explain transformation
+- must feel structured (workbook / framework / system)
+- should imply execution (not theory)
+- can be longer than title
 
-HOOK:
-- must be short
-- 4-10 words ideally
-- must sound like a product promise
-- should fit on a cover
-- should create desire, clarity or transformation
-
-GOOD HOOK EXAMPLES:
-"Build clients through trusted relationships"
-"Turn expertise into predictable income"
-"Close more deals without pressure"
-"Grow authority that attracts buyers"
+GOOD EXAMPLE:
+"A step-by-step workbook to turn conversations into a predictable client system without cold outreach or pressure"
 
 CATEGORY:
-- broad market category, suitable for online knowledge products
-- examples: Business, Marketing, Sales, Personal Development, Leadership, Productivity
+- broad market category (e.g. Business, Marketing, Sales, Personal Development)
 
 TONE:
 - choose one of: premium, classic, modern, bold
 
-AIBOOK STRATEGY:
-- this is not a traditional book
-- this is not theory-first
-- this is not a generic ebook
-- it should feel like a premium guided implementation tool
-- prioritize:
-  - transformation
-  - clarity
-  - usability
-  - frameworks
-  - exercises
-  - action steps
-  - prompts
-  - structured implementation
-- the concept should feel monetizable as a premium digital product
+HOOK (CRITICAL):
+- must feel like a strong promise
+- must include transformation or result
+- should sound like a landing page headline
+- 6–10 words
+- must NOT be generic
+
+BAD:
+"Learn how to build trust"
+"Improve your sales"
+
+GOOD:
+"Convert conversations into predictable high-value clients"
+"Turn trust into a consistent client acquisition system"
+"Build a pipeline of clients without chasing or pressure"
 
 STRICT:
 - no markdown
@@ -160,11 +137,12 @@ STRICT:
             content: combinedInput
           }
         ],
-        temperature: 0.7
+        temperature: 0.8
       })
     });
 
     const data = await response.json();
+
     console.log("OPENAI RAW:", JSON.stringify(data, null, 2));
 
     if (!response.ok) {
@@ -186,7 +164,7 @@ STRICT:
     }
 
     const cleaned = text
-      .replace(/```json/g, "")
+      .replace(/```json/gi, "")
       .replace(/```/g, "")
       .trim();
 
