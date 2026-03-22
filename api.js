@@ -17,6 +17,22 @@ function safeParseJSON(text) {
   }
 }
 
+function detectLanguage(text) {
+  const input = String(text || "").trim();
+
+  if (!input) return "english";
+
+  const polishChars = /[ąćęłńóśźż]/i;
+  const polishWords =
+    /\b(że|się|jest|oraz|który|która|które|sprzedaż|sprzedaży|książka|książki|autor|autora|klient|klienci|zaufanie|biznes|marka|szkolenia|network marketing|relacje)\b/i;
+
+  if (polishChars.test(input) || polishWords.test(input)) {
+    return "polish";
+  }
+
+  return "english";
+}
+
 router.get("/author/analyze", (_req, res) => {
   return res.status(200).json({
     ok: true,
@@ -42,6 +58,8 @@ BOOK DESCRIPTIONS / EXTRA CONTEXT:
 ${authorContext || ""}
 `.trim();
 
+  const detectedLanguage = detectLanguage(combinedInput);
+
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -57,7 +75,16 @@ ${authorContext || ""}
             content: `
 You are a high-level book and product positioning strategist.
 
-Your job is to transform raw author context into a PREMIUM workbook-style product concept.
+Your job is to transform raw author context into a PREMIUM workbook-style product concept that feels like a paid course or system.
+
+IMPORTANT LANGUAGE RULE:
+- detect the language of the user's source material
+- if the input is in Polish, return ALL fields in Polish
+- if the input is in English, return ALL fields in English
+- do NOT translate into another language
+- keep the output in the same language as the source material
+
+Detected language for this task: ${detectedLanguage}
 
 Return ONLY valid JSON in this exact format:
 {
@@ -74,62 +101,75 @@ CRITICAL RULES:
 AUTHOR:
 - extract full name if possible
 
-TITLE (VERY IMPORTANT):
-- must feel like a premium product, not a technical system
-- must NOT sound generic or boring
-- avoid words like "system", "method", "process" as the MAIN title
-- should sound like a real book OR premium course product
-- should feel unique, not overused phrases like "blueprint"
+TITLE (CRITICAL — DIFFERENT LEVEL):
+- must feel like a SYSTEM, FRAMEWORK or MECHANISM
+- must feel proprietary or distinctive
+- must NOT sound generic or common
+- avoid overused words like: blueprint, guide, system (unless stylized and strong)
+- must feel like something you could SELL as a paid program
 - 2–4 words max
-- strong, clear, commercial
+- must sound commercially strong
+- keep it natural in the source language
 
 BAD:
-"Client Conversion System"
+"The Trust Factor"
+"Client System"
 "Sales Method"
-"Business Process"
-"The Trust Blueprint"
+"Poradnik Sprzedaży"
+"System Klienta"
 
 GOOD:
+"The Trust Engine"
+"The Authority Loop"
 "The Conversion Code"
 "The Client Magnet"
-"The Authority Engine"
-"Trust That Sells"
-"The Relationship Advantage"
+"Silnik Zaufania"
+"Kod Konwersji"
+"Magnes Klienta"
+"Pętla Autorytetu"
 
 SUBTITLE:
-- must clearly explain transformation
-- must feel structured (workbook / framework / execution path)
-- should imply execution (not theory)
-- can be longer than title
-- should feel like a practical promise, not vague description
+- must clearly describe transformation AND outcome
+- must feel practical and execution-oriented
+- must describe WHO + RESULT + HOW
+- must sound like a product promise
+- should fit a workbook / implementation format
+- keep it natural in the source language
+
+GOOD:
+"A practical workbook to turn conversations into consistent high-value clients without cold outreach"
+"Praktyczny workbook, który pomaga zamieniać rozmowy w stałych klientów bez zimnego outreachu"
 
 CATEGORY:
 - broad market category
+- keep it natural in the same language as the input
 
 TONE:
-- choose one of: premium, classic, modern, bold
+- choose one of exactly these values:
+  "premium", "classic", "modern", "bold"
 
-HOOK (CRITICAL):
-- must feel like a strong promise
-- must include transformation or result
-- should sound like a landing page headline
-- 6–10 words
-- must NOT be generic
-- must feel sharp and punchy
-- avoid long technical phrases like "income-generating machine"
-- prefer short, clear, powerful language
+HOOK (CRITICAL — MUST BE SHORT):
+- MAX 8 words
+- must feel punchy and sharp
+- must be immediately understandable
+- must focus on RESULT
+- no filler words
+- no long phrases
+- keep it natural in the same language as the input
 
 BAD:
-"Learn how to build trust"
-"Improve your sales"
 "Turn your expertise into a reliable income-generating machine"
+"Turn relationships into reliable client acquisition pathways"
+"Zamień swoją wiedzę w niezawodną maszynę generującą dochód"
 
 GOOD:
-"Convert conversations into predictable high-value clients"
-"Turn trust into a consistent client acquisition system"
-"Build a pipeline of clients without chasing or pressure"
 "Turn conversations into premium clients"
 "Convert trust into predictable revenue"
+"Build clients without chasing"
+"Turn trust into consistent clients"
+"Zamieniaj rozmowy w płacących klientów"
+"Zamień zaufanie w przewidywalną sprzedaż"
+"Buduj klientów bez gonienia"
 
 STRICT:
 - no markdown
@@ -149,7 +189,25 @@ STRICT:
 
     const data = await response.json();
 
+    console.log("OPENAI RAW:", JSON.stringify(data, null, 2));
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        ok: false,
+        error: "OpenAI API error",
+        openai: data
+      });
+    }
+
     const text = data.choices?.[0]?.message?.content;
+
+    if (!text) {
+      return res.status(500).json({
+        ok: false,
+        error: "Empty response from AI",
+        openai: data
+      });
+    }
 
     const cleaned = text
       .replace(/```json/gi, "")
@@ -161,7 +219,10 @@ STRICT:
     if (!parsed) {
       return res.status(500).json({
         ok: false,
-        error: "Invalid JSON from AI"
+        error: "Invalid JSON from AI",
+        raw: text,
+        cleaned,
+        openai: data
       });
     }
 
@@ -171,12 +232,14 @@ STRICT:
 
     return res.status(200).json({
       ok: true,
+      language: detectedLanguage,
       result: parsed
     });
   } catch (err) {
     return res.status(500).json({
       ok: false,
-      error: err.message
+      error: "Server error",
+      details: err.message
     });
   }
 });
