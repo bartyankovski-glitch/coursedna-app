@@ -197,7 +197,6 @@ function startsWithVerb(text, language) {
     "przeksztalc",
     "przekształć",
     "zastosuj",
-    "stworz",
     "tworz",
     "twórz"
   ];
@@ -576,6 +575,174 @@ function scoreHookSubtitleConsistency(hook, subtitle) {
   return score;
 }
 
+function scoreTitleQuality(title, language) {
+  const value = String(title || "").trim();
+  const normalized = normalizeTextForCompare(value);
+
+  if (!normalized) return 0;
+
+  let score = 100;
+  const words = countWords(value);
+
+  if (words > 4) score -= 25;
+  if (words === 1) score -= 10;
+  if (words > 5) score -= 15;
+
+  const genericWordsPl = [
+    "system",
+    "metoda",
+    "proces",
+    "framework",
+    "przewodnik",
+    "strategia",
+    "sprzedaz",
+    "sprzedaż",
+    "klient",
+    "klienci",
+    "biznes"
+  ];
+
+  const genericWordsEn = [
+    "system",
+    "method",
+    "process",
+    "framework",
+    "guide",
+    "strategy",
+    "sales",
+    "client",
+    "clients",
+    "business"
+  ];
+
+  const unnaturalPatternsPl = [
+    "zaufany",
+    "konwersyjny",
+    "sprzedazowy",
+    "sprzedażowy",
+    "klientowy"
+  ];
+
+  const strongPatternsPl = [
+    "kod",
+    "mechanizm",
+    "petla",
+    "pętla",
+    "architektura",
+    "magnes",
+    "silnik"
+  ];
+
+  const strongPatternsEn = [
+    "code",
+    "engine",
+    "loop",
+    "switch",
+    "magnet",
+    "architecture",
+    "mechanism"
+  ];
+
+  const abstractPatternsPl = [
+    "sila",
+    "siła",
+    "moc",
+    "sukces",
+    "droga",
+    "rozwoj",
+    "rozwój"
+  ];
+
+  const abstractPatternsEn = [
+    "power",
+    "success",
+    "growth",
+    "path"
+  ];
+
+  const genericWords = language === "polish" ? genericWordsPl : genericWordsEn;
+  const strongPatterns = language === "polish" ? strongPatternsPl : strongPatternsEn;
+  const abstractPatterns = language === "polish" ? abstractPatternsPl : abstractPatternsEn;
+
+  let genericHits = 0;
+  for (const word of genericWords) {
+    if (normalized.includes(word)) genericHits++;
+  }
+
+  if (genericHits >= 2) score -= 30;
+  if (genericHits >= 3) score -= 20;
+
+  if (language === "polish") {
+    for (const pattern of unnaturalPatternsPl) {
+      if (normalized.includes(pattern)) score -= 40;
+    }
+  }
+
+  let strongHits = 0;
+  for (const pattern of strongPatterns) {
+    if (normalized.includes(pattern)) strongHits++;
+  }
+
+  if (strongHits >= 1) score += 10;
+
+  let abstractHits = 0;
+  for (const pattern of abstractPatterns) {
+    if (normalized.includes(pattern)) abstractHits++;
+  }
+
+  if (abstractHits >= 1) score -= 10;
+
+  if (score < 0) score = 0;
+  if (score > 100) score = 100;
+
+  return score;
+}
+
+function analyzeTitleQuality(title, language) {
+  const value = String(title || "").trim();
+  const normalized = normalizeTextForCompare(value);
+  const issues = [];
+
+  if (!value) {
+    issues.push("empty");
+    return issues;
+  }
+
+  if (countWords(value) > 4) {
+    issues.push("too_long");
+  }
+
+  if (language === "polish") {
+    if (normalized.includes("system") && normalized.includes("sprzed")) {
+      issues.push("too_generic");
+    }
+
+    if (
+      normalized.includes("zaufany") ||
+      normalized.includes("konwersyjny") ||
+      normalized.includes("sprzedazowy") ||
+      normalized.includes("sprzedażowy")
+    ) {
+      issues.push("unnatural_polish");
+    }
+
+    if (
+      normalized.includes("sila") ||
+      normalized.includes("siła") ||
+      normalized.includes("moc") ||
+      normalized.includes("sukces")
+    ) {
+      issues.push("too_abstract");
+    }
+  } else {
+    if (normalized.includes("system") && normalized.includes("sales")) {
+      issues.push("too_generic");
+    }
+  }
+
+  return issues;
+}
+
 function qualityGate({ positioning, language }) {
   const hook = positioning?.hook || "";
   const subtitle = positioning?.subtitle || "";
@@ -584,11 +751,14 @@ function qualityGate({ positioning, language }) {
   const hookScore = scoreHookQuality(hook, language);
   const subtitleScore = scoreSubtitleQuality(subtitle, hook, language);
   const consistencyScore = scoreHookSubtitleConsistency(hook, subtitle);
+  const titleScore = scoreTitleQuality(title, language);
+  const titleIssues = analyzeTitleQuality(title, language);
 
   const overall = Math.round(
-    (hookScore * 0.35) +
-    (subtitleScore * 0.35) +
-    (consistencyScore * 0.30)
+    (hookScore * 0.28) +
+    (subtitleScore * 0.28) +
+    (consistencyScore * 0.22) +
+    (titleScore * 0.22)
   );
 
   const notes = [];
@@ -596,6 +766,7 @@ function qualityGate({ positioning, language }) {
     needsHookRepair: hookScore < 70,
     needsSubtitleRepair: subtitleScore < 70,
     needsConsistencyRepair: consistencyScore < 60,
+    needsTitleRepair: titleScore < 70,
     needsTitleReview: false
   };
 
@@ -628,15 +799,33 @@ function qualityGate({ positioning, language }) {
     notes.push("hook and subtitle repeat the same promise");
   }
 
+  if (titleIssues.includes("too_generic")) {
+    notes.push("title sounds too generic");
+  }
+
+  if (titleIssues.includes("unnatural_polish")) {
+    notes.push("title sounds unnatural in Polish");
+  }
+
+  if (titleIssues.includes("too_abstract")) {
+    notes.push("title may be too abstract");
+  }
+
+  if (titleIssues.includes("too_long")) {
+    notes.push("title is too long");
+  }
+
   const passed =
     hookScore >= 70 &&
     subtitleScore >= 70 &&
     consistencyScore >= 60 &&
+    titleScore >= 70 &&
     !flags.needsTitleReview;
 
   return {
     passed,
     scores: {
+      title: titleScore,
       hook: hookScore,
       subtitle: subtitleScore,
       consistency: consistencyScore,
@@ -949,6 +1138,108 @@ Make the subtitle more about mechanism, structure, implementation or process.
   return parsed;
 }
 
+async function repairTitleIfNeeded(parsed, detectedLanguage) {
+  let titleScore = scoreTitleQuality(parsed.title, detectedLanguage);
+  const titleIssues = analyzeTitleQuality(parsed.title, detectedLanguage);
+
+  const needsTitleRepair =
+    parsed.title &&
+    (
+      titleScore < 70 ||
+      titleIssues.includes("too_generic") ||
+      titleIssues.includes("unnatural_polish")
+    );
+
+  if (!needsTitleRepair) {
+    return { parsed, titleScore, titleIssues };
+  }
+
+  const titleRepairSystemPrompt = `
+You are fixing a BOOK TITLE for a premium workbook product.
+
+IMPORTANT:
+- respond in ${detectedLanguage}
+- return ONLY valid JSON
+- no markdown
+- no explanation
+
+Return ONLY this format:
+{
+  "title": ""
+}
+
+TASK:
+Rewrite ONLY the title.
+
+GOAL:
+- title must feel like a premium product name
+- title must be natural in the target language
+- title must NOT sound translated from English
+- title must be 2-4 words
+- title must feel branded, memorable and commercially strong
+- avoid generic structures
+- avoid overusing words like system, method, process
+
+FOR POLISH:
+- prefer noun-based constructions like:
+  "Kod Zaufania"
+  "Mechanizm Zaufania"
+  "Pętla Autorytetu"
+  "Magnes Klienta"
+  "Silnik Zaufania"
+- avoid unnatural constructions like:
+  "Zaufany Magnet"
+  "Konwersyjny Klient"
+
+STRICT:
+- JSON only
+- no extra keys
+`;
+
+  const titleRepairUserPrompt = `
+CURRENT TITLE: ${parsed.title || ""}
+HOOK: ${parsed.hook || ""}
+SUBTITLE: ${parsed.subtitle || ""}
+CATEGORY: ${parsed.category || ""}
+TONE: ${parsed.tone || "premium"}
+
+Rewrite the title now.
+`;
+
+  const { response: titleRepairResponse, data: titleRepairData } = await callOpenAI(
+    [
+      {
+        role: "system",
+        content: titleRepairSystemPrompt
+      },
+      {
+        role: "user",
+        content: titleRepairUserPrompt
+      }
+    ],
+    0.6
+  );
+
+  const titleRepairText = titleRepairData.choices?.[0]?.message?.content;
+
+  if (titleRepairResponse.ok && titleRepairText) {
+    const titleRepairCleaned = cleanModelText(titleRepairText);
+    const repairedTitle = safeParseJSON(titleRepairCleaned);
+
+    if (repairedTitle?.title) {
+      parsed.title = String(repairedTitle.title).trim();
+    }
+  }
+
+  titleScore = scoreTitleQuality(parsed.title, detectedLanguage);
+
+  return {
+    parsed,
+    titleScore,
+    titleIssues: analyzeTitleQuality(parsed.title, detectedLanguage)
+  };
+}
+
 async function generatePositioning({ combinedInput, detectedLanguage }) {
   const mainSystemPrompt = `
 You are a high-level book and product positioning strategist.
@@ -1171,7 +1462,10 @@ STRICT:
 
   trimResultFields(parsed);
 
-  const hookRepaired = await repairHookIfNeeded(parsed, detectedLanguage);
+  const titleRepaired = await repairTitleIfNeeded(parsed, detectedLanguage);
+  trimResultFields(titleRepaired.parsed);
+
+  const hookRepaired = await repairHookIfNeeded(titleRepaired.parsed, detectedLanguage);
   trimResultFields(hookRepaired.parsed);
 
   const subtitleRepaired = await repairSubtitleIfNeeded(
@@ -1567,6 +1861,10 @@ router.post("/generate-preview", async (req, res) => {
       hookScore = positioningResult.hookScore;
       quality = positioningResult.quality;
     } else {
+      trimResultFields(finalPositioning);
+
+      const titleRepaired = await repairTitleIfNeeded(finalPositioning, detectedLanguage);
+      finalPositioning = titleRepaired.parsed;
       trimResultFields(finalPositioning);
 
       const repairedHook = await repairHookIfNeeded(finalPositioning, detectedLanguage);
