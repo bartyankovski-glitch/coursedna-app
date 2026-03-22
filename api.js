@@ -1,4 +1,4 @@
-"import express from \"express\";
+import express from "express";
 
 const router = express.Router();
 
@@ -6,7 +6,7 @@ function safeParseJSON(text) {
   try {
     return JSON.parse(text);
   } catch {
-    const match = text.match(/\\{[\\s\\S]*\\}/);
+    const match = String(text || "").match(/\{[\s\S]*\}/);
     if (!match) return null;
 
     try {
@@ -18,40 +18,40 @@ function safeParseJSON(text) {
 }
 
 function detectLanguage(text) {
-  const input = String(text || \"\").trim();
+  const input = String(text || "").trim();
 
-  if (!input) return \"english\";
+  if (!input) return "english";
 
   const polishChars = /[ąćęłńóśźż]/i;
   const polishWords =
-    /\\b(że|się|jest|oraz|który|która|które|sprzedaż|sprzedaży|klient|klienci|zaufanie|biznes|strategia|relacje|rozmowy|autora|książka|książki|workbook)\\b/i;
+    /\b(że|się|jest|oraz|który|która|które|sprzedaż|sprzedaży|klient|klienci|zaufanie|biznes|strategia|relacje|rozmowy|autora|książka|książki|workbook)\b/i;
 
   if (polishChars.test(input) || polishWords.test(input)) {
-    return \"polish\";
+    return "polish";
   }
 
-  return \"english\";
+  return "english";
 }
 
 function normalizeTextForCompare(text) {
-  return String(text || \"\")
+  return String(text || "")
     .toLowerCase()
-    .replace(/[.,/#!$%^&*;:{}=\\-_`~()\"'?<>\\[\\]\\\\|]/g, \" \")
-    .replace(/\\s+/g, \" \")
+    .replace(/[.,/#!$%^&*;:{}=\-_`~()"’?<>[\]\\|]/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
 function getMeaningfulWords(text) {
   const stopwords = new Set([
-    \"i\", \"oraz\", \"a\", \"to\", \"w\", \"we\", \"z\", \"ze\", \"na\", \"do\", \"od\", \"po\", \"bez\",
-    \"dla\", \"jest\", \"się\", \"który\", \"która\", \"które\", \"that\", \"into\", \"from\", \"with\",
-    \"without\", \"the\", \"and\", \"for\", \"your\", \"this\", \"these\", \"those\", \"practical\",
-    \"praktyczny\", \"workbook\", \"guide\", \"system\", \"framework\", \"mechanizm\", \"metoda\",
-    \"oraz\", \"przez\", \"który\", \"helps\", \"help\", \"using\", \"oparty\", \"oparta\", \"oparte\"
+    "i", "oraz", "a", "to", "w", "we", "z", "ze", "na", "do", "od", "po", "bez",
+    "dla", "jest", "się", "który", "która", "które", "that", "into", "from", "with",
+    "without", "the", "and", "for", "your", "this", "these", "those", "practical",
+    "praktyczny", "workbook", "guide", "system", "framework", "mechanizm", "metoda",
+    "oraz", "przez", "który", "helps", "help", "using", "oparty", "oparta", "oparte"
   ]);
 
   return normalizeTextForCompare(text)
-    .split(\" \")
+    .split(" ")
     .filter((word) => word.length > 3 && !stopwords.has(word));
 }
 
@@ -86,23 +86,23 @@ function hasSemanticClash(hook, subtitle) {
   const s = normalizeTextForCompare(subtitle);
 
   const patterns = [
-    [\"klient\", \"klient\"],
-    [\"sprzeda\", \"sprzeda\"],
-    [\"pozyskiw\", \"pozyskiw\"],
-    [\"konwers\", \"konwers\"],
-    [\"relac\", \"relac\"],
-    [\"rozmow\", \"rozmow\"],
-    [\"dochód\", \"doch\"],
-    [\"przych\", \"przych\"],
-    [\"income\", \"income\"],
-    [\"client\", \"client\"],
-    [\"sale\", \"sale\"],
-    [\"sales\", \"sales\"],
-    [\"convert\", \"convert\"],
-    [\"conversion\", \"conversion\"],
-    [\"relationship\", \"relationship\"],
-    [\"conversation\", \"conversation\"],
-    [\"revenue\", \"revenue\"]
+    ["klient", "klient"],
+    ["sprzeda", "sprzeda"],
+    ["pozyskiw", "pozyskiw"],
+    ["konwers", "konwers"],
+    ["relac", "relac"],
+    ["rozmow", "rozmow"],
+    ["dochód", "doch"],
+    ["przych", "przych"],
+    ["income", "income"],
+    ["client", "client"],
+    ["sale", "sale"],
+    ["sales", "sales"],
+    ["convert", "convert"],
+    ["conversion", "conversion"],
+    ["relationship", "relationship"],
+    ["conversation", "conversation"],
+    ["revenue", "revenue"]
   ];
 
   let matches = 0;
@@ -117,20 +117,20 @@ function hasSemanticClash(hook, subtitle) {
 }
 
 function cleanModelText(text) {
-  return String(text || \"\")
-    .replace(/```json/gi, \"\")
-    .replace(/```/g, \"\")
+  return String(text || "")
+    .replace(/```json/gi, "")
+    .replace(/```/g, "")
     .trim();
 }
 
 function normalizeToneValue(tone) {
-  const value = String(tone || \"\")
+  const value = String(tone || "")
     .trim()
     .toLowerCase();
 
-  return [\"premium\", \"classic\", \"modern\", \"bold\"].includes(value)
+  return ["premium", "classic", "modern", "bold"].includes(value)
     ? value
-    : \"premium\";
+    : "premium";
 }
 
 function trimResultFields(parsed) {
@@ -140,20 +140,20 @@ function trimResultFields(parsed) {
   if (parsed.category) parsed.category = String(parsed.category).trim();
   if (parsed.hook) parsed.hook = String(parsed.hook).trim().slice(0, 80);
 
-  parsed.tone = normalizeToneValue(parsed.tone || \"premium\");
+  parsed.tone = normalizeToneValue(parsed.tone || "premium");
 
   return parsed;
 }
 
 async function callOpenAI(messages, temperature = 0.85) {
-  const response = await fetch(\"https://api.openai.com/v1/chat/completions\", {
-    method: \"POST\",
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
     headers: {
-      \"Content-Type\": \"application/json\",
-      \"Authorization\": `Bearer ${process.env.OPENAI_API_KEY}`
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
     },
     body: JSON.stringify({
-      model: \"gpt-4o-mini\",
+      model: "gpt-4o-mini",
       messages,
       temperature
     })
@@ -164,29 +164,29 @@ async function callOpenAI(messages, temperature = 0.85) {
   return { response, data };
 }
 
-router.get(\"/author/analyze\", (_req, res) => {
+router.get("/author/analyze", (_req, res) => {
   return res.status(200).json({
     ok: true,
-    message: \"GET test działa\"
+    message: "GET test działa"
   });
 });
 
-router.post(\"/author/analyze\", async (req, res) => {
+router.post("/author/analyze", async (req, res) => {
   const { linkedinInput, authorContext } = req.body;
 
   if (!linkedinInput && !authorContext) {
     return res.status(400).json({
       ok: false,
-      error: \"No input\"
+      error: "No input"
     });
   }
 
   const combinedInput = `
 LINKEDIN / BIO:
-${linkedinInput || \"\"}
+${linkedinInput || ""}
 
 BOOK DESCRIPTIONS / EXTRA CONTEXT:
-${authorContext || \"\"}
+${authorContext || ""}
 `.trim();
 
   const detectedLanguage = detectLanguage(combinedInput);
@@ -206,12 +206,12 @@ Your job is to transform raw author context into a premium workbook-style produc
 
 Return ONLY valid JSON in this exact format:
 {
-  \"author\": \"\",
-  \"title\": \"\",
-  \"subtitle\": \"\",
-  \"category\": \"\",
-  \"tone\": \"\",
-  \"hook\": \"\"
+  "author": "",
+  "title": "",
+  "subtitle": "",
+  "category": "",
+  "tone": "",
+  "hook": ""
 }
 
 GENERAL RULES:
@@ -227,11 +227,11 @@ TITLE (CRITICAL):
 - must NOT sound generic
 - must NOT sound like a textbook category
 - avoid titles built from obvious descriptors like:
-  \"Trust-Based Sales System\"
-  \"Relationship Sales Method\"
-  \"Client Acquisition Process\"
-  \"Sprzedaż oparta na zaufaniu\"
-  \"System sprzedaży relacyjnej\"
+  "Trust-Based Sales System"
+  "Relationship Sales Method"
+  "Client Acquisition Process"
+  "Sprzedaż oparta na zaufaniu"
+  "System sprzedaży relacyjnej"
 - avoid overused structural words as the main form:
   system, method, process, framework, blueprint, guide
 - these words can inspire the idea, but should NOT dominate the title
@@ -240,29 +240,29 @@ TITLE (CRITICAL):
 - keep it natural in the source language
 
 BAD ENGLISH:
-\"Trust-Based Sales System\"
-\"Client Conversion System\"
-\"Sales Method\"
-\"Business Process\"
+"Trust-Based Sales System"
+"Client Conversion System"
+"Sales Method"
+"Business Process"
 
 GOOD ENGLISH:
-\"The Trust Engine\"
-\"The Authority Loop\"
-\"The Conversion Code\"
-\"The Client Magnet\"
-\"The Referral Switch\"
+"The Trust Engine"
+"The Authority Loop"
+"The Conversion Code"
+"The Client Magnet"
+"The Referral Switch"
 
 BAD POLISH:
-\"System zaufania w sprzedaży\"
-\"Sprzedaż oparta na relacjach\"
-\"Metoda pozyskiwania klientów\"
+"System zaufania w sprzedaży"
+"Sprzedaż oparta na relacjach"
+"Metoda pozyskiwania klientów"
 
 GOOD POLISH:
-\"Silnik Zaufania\"
-\"Pętla Autorytetu\"
-\"Kod Konwersji\"
-\"Magnes Klienta\"
-\"Mechanizm Poleceń\"
+"Silnik Zaufania"
+"Pętla Autorytetu"
+"Kod Konwersji"
+"Magnes Klienta"
+"Mechanizm Poleceń"
 
 SUBTITLE:
 - must describe transformation + result
@@ -323,11 +323,11 @@ STRICT:
     const { response, data } = await callOpenAI(
       [
         {
-          role: \"system\",
+          role: "system",
           content: mainSystemPrompt
         },
         {
-          role: \"user\",
+          role: "user",
           content: combinedInput
         }
       ],
@@ -339,7 +339,7 @@ STRICT:
     if (!response.ok) {
       return res.status(response.status).json({
         ok: false,
-        error: \"OpenAI API error\",
+        error: "OpenAI API error",
         openai: data
       });
     }
@@ -347,7 +347,7 @@ STRICT:
     if (!text) {
       return res.status(500).json({
         ok: false,
-        error: \"Empty response from AI\",
+        error: "Empty response from AI",
         openai: data
       });
     }
@@ -358,7 +358,7 @@ STRICT:
     if (!parsed) {
       return res.status(500).json({
         ok: false,
-        error: \"Invalid JSON from AI\",
+        error: "Invalid JSON from AI",
         raw: text,
         cleaned
       });
@@ -384,7 +384,7 @@ IMPORTANT:
 
 Return ONLY this format:
 {
-  \"subtitle\": \"\"
+  "subtitle": ""
 }
 
 TASK:
@@ -408,12 +408,12 @@ RULES:
 `;
 
       const repairUserPrompt = `
-AUTHOR: ${parsed.author || \"\"}
-TITLE: ${parsed.title || \"\"}
-HOOK: ${parsed.hook || \"\"}
-CURRENT SUBTITLE: ${parsed.subtitle || \"\"}
-CATEGORY: ${parsed.category || \"\"}
-TONE: ${parsed.tone || \"premium\"}
+AUTHOR: ${parsed.author || ""}
+TITLE: ${parsed.title || ""}
+HOOK: ${parsed.hook || ""}
+CURRENT SUBTITLE: ${parsed.subtitle || ""}
+CATEGORY: ${parsed.category || ""}
+TONE: ${parsed.tone || "premium"}
 
 Rewrite the subtitle so it does not repeat the hook.
 Make the subtitle more about mechanism, structure, implementation or process.
@@ -422,11 +422,11 @@ Make the subtitle more about mechanism, structure, implementation or process.
       const { response: repairResponse, data: repairData } = await callOpenAI(
         [
           {
-            role: \"system\",
+            role: "system",
             content: repairSystemPrompt
           },
           {
-            role: \"user\",
+            role: "user",
             content: repairUserPrompt
           }
         ],
@@ -461,24 +461,3 @@ Make the subtitle more about mechanism, structure, implementation or process.
 });
 
 export default router;
-"```
-
-Ta wersja powinna pchnąć subtitle z poziomu:
-- „też wynik / też obietnica”
-
-na poziom:
-- „mechanizm / system / droga wdrożenia”.
-
-Na Twoim ostatnim screenie nadal widać lekkie zbliżenie znaczeniowe:
-- hook: rozmowy → lojalni klienci
-- subtitle: system pozyskiwania klientów
-
-Po tej aktualizacji subtitle powinien częściej iść bardziej w stronę np.:
-- struktury rozmów
-- budowy zaufania
-- procesu konwersji
-- uporządkowanego systemu wdrożenia
-
-Gdy przetestujesz, podeślij efekt. Następny sensowny krok po tym to już:
-- osobny endpoint `POST /api/translate`
-- i przycisk `🌍 Generuj wersję global (EN)`."
