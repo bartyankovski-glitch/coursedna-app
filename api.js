@@ -33,6 +33,72 @@ function detectLanguage(text) {
   return "english";
 }
 
+function normalizeTextForCompare(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[.,/#!$%^&*;:{}=\-_`~()"'?<>[\]\\|]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getMeaningfulWords(text) {
+  const stopwords = new Set([
+    "i", "oraz", "a", "to", "w", "we", "z", "ze", "na", "do", "od", "po", "bez",
+    "dla", "jest", "się", "który", "która", "które", "that", "into", "from", "with",
+    "without", "the", "and", "for", "your", "this", "these", "those", "practical",
+    "praktyczny", "workbook", "guide", "system", "framework", "mechanizm", "metoda"
+  ]);
+
+  return normalizeTextForCompare(text)
+    .split(" ")
+    .filter((word) => word.length > 3 && !stopwords.has(word));
+}
+
+function hasTooMuchOverlap(hook, subtitle) {
+  const hookWords = getMeaningfulWords(hook);
+  const subtitleWords = getMeaningfulWords(subtitle);
+
+  if (!hookWords.length || !subtitleWords.length) {
+    return false;
+  }
+
+  const subtitleSet = new Set(subtitleWords);
+  const commonWords = hookWords.filter((word) => subtitleSet.has(word));
+  const overlapRatio = commonWords.length / hookWords.length;
+
+  const hookNormalized = normalizeTextForCompare(hook);
+  const subtitleNormalized = normalizeTextForCompare(subtitle);
+
+  if (subtitleNormalized.includes(hookNormalized) || hookNormalized.includes(subtitleNormalized)) {
+    return true;
+  }
+
+  if (overlapRatio >= 0.5) {
+    return true;
+  }
+
+  return false;
+}
+
+async function callOpenAI(messages) {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages,
+      temperature: 0.85
+    })
+  });
+
+  const data = await response.json();
+
+  return { response, data };
+}
+
 router.get("/author/analyze", (_req, res) => {
   return res.status(200).json({
     ok: true,
@@ -61,18 +127,7 @@ ${authorContext || ""}
   const detectedLanguage = detectLanguage(combinedInput);
 
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: `
+    const mainSystemPrompt = `
 You are a high-level book and product positioning strategist.
 
 IMPORTANT LANGUAGE RULE:
@@ -154,12 +209,6 @@ SUBTITLE:
 - avoid sounding like an academic description
 - keep it natural in the source language
 
-GOOD ENGLISH:
-"A practical workbook to turn conversations into consistent premium clients without cold outreach"
-
-GOOD POLISH:
-"Praktyczny workbook, który pomaga zamieniać rozmowy w stałych klientów bez presji sprzedażowej"
-
 HOOK (CRITICAL):
 - MAX 8 words
 - must be punchy
@@ -170,23 +219,12 @@ HOOK (CRITICAL):
 - avoid vague or soft wording
 - keep it natural in the source language
 
-BAD ENGLISH:
-"Master client conversations effortlessly"
-"Transform relationships into predictable income streams"
-
-GOOD ENGLISH:
-"Turn trust into premium clients"
-"Build clients without chasing"
-"Convert conversations into revenue"
-
-BAD POLISH:
-"Zamieniaj rozmowy w płacących klientów" if the title already says almost the same
-"Buduj relacje i sprzedawaj więcej"
-
-GOOD POLISH:
-"Buduj klientów bez presji sprzedaży"
-"Zamień zaufanie w stałą sprzedaż"
-"Twórz klientów bez gonienia za leadami"
+HOOK vs SUBTITLE:
+- hook and subtitle must NOT repeat the same idea
+- each line must introduce a different value layer
+- hook should be a sharp promise or angle
+- subtitle should expand the offer with practical transformation and mechanism
+- avoid repeating the same phrase, same framing or same benefit in both lines
 
 CATEGORY:
 - broad market category
@@ -213,18 +251,18 @@ STRICT:
 - no markdown
 - no explanation
 - no extra keys
-`
-          },
-          {
-            role: "user",
-            content: combinedInput
-          }
-        ],
-        temperature: 0.85
-      })
-    });
+`;
 
-    const data = await response.json();
+    const { response, data } = await callOpenAI([
+      {
+        role: "system",
+        content: mainSystemPrompt
+      },
+      {
+        role: "user",
+        content: combinedInput
+      }
+    ]);
 
     const text = data.choices?.[0]?.message?.content;
 
@@ -287,6 +325,72 @@ STRICT:
         : "premium";
     } else {
       parsed.tone = "premium";
+    }
+
+    if (parsed.hook && parsed.subtitle && hasTooMuchOverlap(parsed.hook, parsed.subtitle)) {
+      const repairSystemPrompt = `
+You are improving a premium workbook product concept.
+
+IMPORTANT:
+- respond in ${detectedLanguage}
+- return ONLY valid JSON
+- no markdown
+- no explanation
+
+Return ONLY this format:
+{
+  "subtitle": ""
+}
+
+TASK:
+Rewrite ONLY the subtitle.
+
+RULES:
+- keep the same overall product direction
+- keep the same language
+- do NOT repeat the same idea as the hook
+- do NOT reuse the same key words from the hook unless absolutely necessary
+- subtitle must add a different value layer: mechanism, structure, transformation, implementation
+- make it practical, clear and premium
+- good subtitle = workbook promise
+`;
+
+      const repairUserPrompt = `
+AUTHOR: ${parsed.author || ""}
+TITLE: ${parsed.title || ""}
+HOOK: ${parsed.hook || ""}
+CURRENT SUBTITLE: ${parsed.subtitle || ""}
+CATEGORY: ${parsed.category || ""}
+TONE: ${parsed.tone || "premium"}
+
+Rewrite the subtitle so it does not repeat the hook.
+`;
+
+      const { response: repairResponse, data: repairData } = await callOpenAI([
+        {
+          role: "system",
+          content: repairSystemPrompt
+        },
+        {
+          role: "user",
+          content: repairUserPrompt
+        }
+      ]);
+
+      const repairText = repairData.choices?.[0]?.message?.content;
+
+      if (repairResponse.ok && repairText) {
+        const repairCleaned = repairText
+          .replace(/```json/gi, "")
+          .replace(/```/g, "")
+          .trim();
+
+        const repaired = safeParseJSON(repairCleaned);
+
+        if (repaired?.subtitle) {
+          parsed.subtitle = String(repaired.subtitle).trim();
+        }
+      }
     }
 
     return res.status(200).json({
