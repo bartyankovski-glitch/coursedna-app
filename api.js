@@ -24,7 +24,7 @@ function detectLanguage(text) {
 
   const polishChars = /[ąćęłńóśźż]/i;
   const polishWords =
-    /\b(że|się|jest|oraz|który|która|sprzedaż|klient|klienci|zaufanie|biznes|relacje)\b/i;
+    /\b(że|się|jest|oraz|który|która|które|sprzedaż|sprzedaży|klient|klienci|zaufanie|biznes|strategia|relacje|rozmowy|autora|książka|książki|workbook)\b/i;
 
   if (polishChars.test(input) || polishWords.test(input)) {
     return "polish";
@@ -75,11 +75,16 @@ ${authorContext || ""}
             content: `
 You are a high-level book and product positioning strategist.
 
-IMPORTANT:
-- always respond in the SAME LANGUAGE as the input
-- do NOT translate
+IMPORTANT LANGUAGE RULE:
+- always respond in the SAME LANGUAGE as the source input
+- if the source input is Polish, respond in Polish
+- if the source input is English, respond in English
+- do NOT translate into another language
+- for this task, detected language is: ${detectedLanguage}
 
-Return ONLY valid JSON:
+Your job is to transform raw author context into a premium workbook-style product concept.
+
+Return ONLY valid JSON in this exact format:
 {
   "author": "",
   "title": "",
@@ -89,45 +94,125 @@ Return ONLY valid JSON:
   "hook": ""
 }
 
-TITLE:
-- must feel like a product / system
-- 2–4 words max
-- distinctive, sellable
-- avoid generic phrases
+GENERAL RULES:
+- think like a premium product strategist, not like a generic copywriter
+- the output should feel sellable, distinctive and market-ready
+- avoid boring, generic, obvious phrasing
+
+AUTHOR:
+- extract full name if possible
+
+TITLE (CRITICAL):
+- must feel like a branded product, framework, mechanism or named method
+- must NOT sound generic
+- must NOT sound like a textbook category
+- avoid titles built from obvious descriptors like:
+  "Trust-Based Sales System"
+  "Relationship Sales Method"
+  "Client Acquisition Process"
+  "Sprzedaż oparta na zaufaniu"
+  "System sprzedaży relacyjnej"
+- avoid overused structural words as the main form:
+  system, method, process, framework, blueprint, guide
+- these words can inspire the idea, but should NOT dominate the title
+- title should feel distinctive, memorable and commercially strong
+- 2-4 words max
+- keep it natural in the source language
+
+BAD ENGLISH:
+"Trust-Based Sales System"
+"Client Conversion System"
+"Sales Method"
+"Business Process"
+
+GOOD ENGLISH:
+"The Trust Engine"
+"The Authority Loop"
+"The Conversion Code"
+"The Client Magnet"
+"The Referral Switch"
+
+BAD POLISH:
+"System zaufania w sprzedaży"
+"Sprzedaż oparta na relacjach"
+"Metoda pozyskiwania klientów"
+
+GOOD POLISH:
+"Silnik Zaufania"
+"Pętla Autorytetu"
+"Kod Konwersji"
+"Magnes Klienta"
+"Mechanizm Poleceń"
 
 SUBTITLE:
-- describe transformation + result
+- must describe transformation + result
 - practical, execution-based
-- sounds like product promise
+- should feel like a workbook promise
+- should explain what the user achieves
+- can be longer than the title
+- must feel specific, not vague
+- avoid sounding like an academic description
+- keep it natural in the source language
+
+GOOD ENGLISH:
+"A practical workbook to turn conversations into consistent premium clients without cold outreach"
+
+GOOD POLISH:
+"Praktyczny workbook, który pomaga zamieniać rozmowy w stałych klientów bez presji sprzedażowej"
 
 HOOK (CRITICAL):
 - MAX 8 words
 - must be punchy
 - must NOT repeat the title idea
-- must ADD new value (result / mechanism / benefit)
-- must feel like headline
+- must ADD a new value layer: result, mechanism, advantage or promise
+- must feel like a headline
+- avoid filler words
+- avoid vague or soft wording
+- keep it natural in the source language
 
-BAD:
-Title: Silnik Zaufania
-Hook: Zamieniaj rozmowy w klientów (powtórzenie)
+BAD ENGLISH:
+"Master client conversations effortlessly"
+"Transform relationships into predictable income streams"
 
-GOOD:
-Title: Silnik Zaufania
-Hook: Buduj klientów bez presji sprzedaży
+GOOD ENGLISH:
+"Turn trust into premium clients"
+"Build clients without chasing"
+"Convert conversations into revenue"
 
-GOOD:
-Title: The Authority Loop
-Hook: Build clients without chasing
+BAD POLISH:
+"Zamieniaj rozmowy w płacących klientów" if the title already says almost the same
+"Buduj relacje i sprzedawaj więcej"
+
+GOOD POLISH:
+"Buduj klientów bez presji sprzedaży"
+"Zamień zaufanie w stałą sprzedaż"
+"Twórz klientów bez gonienia za leadami"
 
 CATEGORY:
-- natural language
+- broad market category
+- keep it natural in the source language
+- examples:
+  Business
+  Sales
+  Marketing
+  Personal Development
+  Biznes
+  Sprzedaż
+  Marketing
+  Rozwój osobisty
 
 TONE:
-- premium / classic / modern / bold
+- choose exactly one of:
+  premium
+  classic
+  modern
+  bold
 
 STRICT:
-- JSON only
+- return JSON only
+- no markdown
 - no explanation
+- no extra keys
 `
           },
           {
@@ -135,13 +220,29 @@ STRICT:
             content: combinedInput
           }
         ],
-        temperature: 0.8
+        temperature: 0.85
       })
     });
 
     const data = await response.json();
 
     const text = data.choices?.[0]?.message?.content;
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        ok: false,
+        error: "OpenAI API error",
+        openai: data
+      });
+    }
+
+    if (!text) {
+      return res.status(500).json({
+        ok: false,
+        error: "Empty response from AI",
+        openai: data
+      });
+    }
 
     const cleaned = text
       .replace(/```json/gi, "")
@@ -153,16 +254,44 @@ STRICT:
     if (!parsed) {
       return res.status(500).json({
         ok: false,
-        error: "Invalid JSON from AI"
+        error: "Invalid JSON from AI",
+        raw: text,
+        cleaned
       });
     }
 
+    if (parsed.author) {
+      parsed.author = String(parsed.author).trim();
+    }
+
+    if (parsed.title) {
+      parsed.title = String(parsed.title).trim();
+    }
+
+    if (parsed.subtitle) {
+      parsed.subtitle = String(parsed.subtitle).trim();
+    }
+
+    if (parsed.category) {
+      parsed.category = String(parsed.category).trim();
+    }
+
     if (parsed.hook) {
-      parsed.hook = String(parsed.hook).slice(0, 80);
+      parsed.hook = String(parsed.hook).trim().slice(0, 80);
+    }
+
+    if (parsed.tone) {
+      const tone = String(parsed.tone).trim().toLowerCase();
+      parsed.tone = ["premium", "classic", "modern", "bold"].includes(tone)
+        ? tone
+        : "premium";
+    } else {
+      parsed.tone = "premium";
     }
 
     return res.status(200).json({
       ok: true,
+      language: detectedLanguage,
       result: parsed
     });
   } catch (err) {
