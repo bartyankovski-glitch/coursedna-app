@@ -145,6 +145,104 @@ function trimResultFields(parsed) {
   return parsed;
 }
 
+function countWords(text) {
+  return normalizeTextForCompare(text)
+    .split(" ")
+    .filter(Boolean).length;
+}
+
+function startsWithVerb(hook, language) {
+  const normalized = normalizeTextForCompare(hook);
+  const firstWord = normalized.split(" ")[0] || "";
+
+  if (!firstWord) return false;
+
+  const polishVerbStarts = [
+    "zbuduj",
+    "odkryj",
+    "uzyskaj",
+    "stworz",
+    "stwórz",
+    "buduj",
+    "zacznij",
+    "przyciagnij",
+    "przyciągnij",
+    "zamien",
+    "zamień",
+    "zwieksz",
+    "zwiększ",
+    "osiagnij",
+    "osiągnij",
+    "zdobadz",
+    "zdobądź",
+    "pokonaj",
+    "wykorzystaj"
+  ];
+
+  const englishVerbStarts = [
+    "build",
+    "discover",
+    "gain",
+    "create",
+    "start",
+    "attract",
+    "turn",
+    "increase",
+    "achieve",
+    "win",
+    "use",
+    "master",
+    "transform"
+  ];
+
+  if (language === "polish") {
+    return polishVerbStarts.includes(firstWord);
+  }
+
+  return englishVerbStarts.includes(firstWord);
+}
+
+function hasWeakHookStyle(hook, language) {
+  const value = String(hook || "").trim();
+  const normalized = normalizeTextForCompare(value);
+
+  if (!normalized) return true;
+  if (countWords(value) > 6) return true;
+  if (value.includes(",")) return true;
+  if (startsWithVerb(value, language)) return true;
+
+  const badPhrasesPl = [
+    "jak ",
+    "system ",
+    "metoda ",
+    "odkryj ",
+    "uzyskaj ",
+    "zbuduj ",
+    "stworz ",
+    "stwórz "
+  ];
+
+  const badPhrasesEn = [
+    "how ",
+    "system ",
+    "method ",
+    "discover ",
+    "build ",
+    "gain ",
+    "create "
+  ];
+
+  const patterns = language === "polish" ? badPhrasesPl : badPhrasesEn;
+
+  for (const pattern of patterns) {
+    if (normalized.startsWith(pattern)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 async function callOpenAI(messages, temperature = 0.85) {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -286,19 +384,47 @@ SUBTITLE:
 - keep it natural in the source language
 
 HOOK (CRITICAL):
-- MAX 8 words
-- must be punchy
-- must NOT repeat the title idea
-- must ADD a new value layer: result, mechanism, advantage or promise
-- must feel like a headline
-- avoid filler words
-- avoid vague or soft wording
+- MAX 6 words (hard limit)
+- prefer 2-4 words
+- must be extremely short
 - keep it natural in the source language
+
+FORMAT (VERY IMPORTANT):
+- must feel like a PRODUCT TAGLINE or CATEGORY LABEL
+- NOT a sentence
+- NOT an instruction
+- NOT "how to"
+
+STRICT RULES:
+- NO verbs at the beginning
+- NO commas
+- NO multiple ideas
+- NO full sentences
+
+BAD:
+"Uzyskaj stabilny dochód z wiedzy"
+"Zbuduj trwałe relacje"
+"Odkryj system sprzedaży"
+"Build clients without chasing"
+"How to build trust"
+
+GOOD:
+"Dochód z wiedzy"
+"Klient bez pościgu"
+"Zaufanie zamiast presji"
+"Relacje, które sprzedają"
+"Sprzedaż bez presji"
+"Klient przychodzi sam"
+
+STRUCTURE:
+- 1 idea
+- 1 angle
+- high clarity
 
 HOOK vs SUBTITLE:
 - hook and subtitle must NOT repeat the same idea
 - each line must introduce a different value layer
-- hook should be a sharp promise or angle
+- hook should be a short sharp angle, claim or tagline
 - subtitle should expand the offer with practical transformation and mechanism
 - subtitle should explain HOW the promise becomes real
 - if hook is about result, subtitle must focus on structure, system, process, path or implementation
@@ -376,6 +502,96 @@ STRICT:
     }
 
     trimResultFields(parsed);
+
+    const needsHookRepair =
+      parsed.hook &&
+      (hasWeakHookStyle(parsed.hook, detectedLanguage) ||
+        hasTooMuchOverlap(parsed.hook, parsed.subtitle) ||
+        hasSemanticClash(parsed.hook, parsed.subtitle));
+
+    if (needsHookRepair) {
+      const hookRepairSystemPrompt = `
+You are improving only the hook for a premium workbook product concept.
+
+IMPORTANT:
+- respond in ${detectedLanguage}
+- return ONLY valid JSON
+- no markdown
+- no explanation
+
+Return ONLY this format:
+{
+  "hook": ""
+}
+
+TASK:
+Rewrite ONLY the hook.
+
+GOAL:
+- hook must be very short
+- hook must feel like a product tagline or category label
+- hook must NOT be a sentence
+- hook must NOT start with a verb
+- hook must NOT repeat subtitle meaning
+- hook must add a new angle
+
+STRICT RULES:
+- max 6 words
+- prefer 2-4 words
+- no comma
+- no multiple ideas
+- no instruction style
+- no "how to" style
+
+BAD:
+"Uzyskaj stabilny dochód z wiedzy"
+"Zbuduj trwałe relacje"
+"Odkryj system sprzedaży"
+
+GOOD:
+"Dochód z wiedzy"
+"Sprzedaż bez presji"
+"Klient bez pościgu"
+"Zaufanie zamiast presji"
+"Relacje, które sprzedają"
+`;
+
+      const hookRepairUserPrompt = `
+AUTHOR: ${parsed.author || ""}
+TITLE: ${parsed.title || ""}
+CURRENT HOOK: ${parsed.hook || ""}
+SUBTITLE: ${parsed.subtitle || ""}
+CATEGORY: ${parsed.category || ""}
+TONE: ${parsed.tone || "premium"}
+
+Rewrite the hook now.
+`;
+
+      const { response: hookRepairResponse, data: hookRepairData } = await callOpenAI(
+        [
+          {
+            role: "system",
+            content: hookRepairSystemPrompt
+          },
+          {
+            role: "user",
+            content: hookRepairUserPrompt
+          }
+        ],
+        0.65
+      );
+
+      const hookRepairText = hookRepairData.choices?.[0]?.message?.content;
+
+      if (hookRepairResponse.ok && hookRepairText) {
+        const hookRepairCleaned = cleanModelText(hookRepairText);
+        const repairedHook = safeParseJSON(hookRepairCleaned);
+
+        if (repairedHook?.hook) {
+          parsed.hook = String(repairedHook.hook).trim().slice(0, 80);
+        }
+      }
+    }
 
     const needsSubtitleRepair =
       parsed.hook &&
