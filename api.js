@@ -24,7 +24,7 @@ function detectLanguage(text) {
 
   const polishChars = /[ąćęłńóśźż]/i;
   const polishWords =
-    /\b(że|się|jest|oraz|który|która|które|sprzedaż|sprzedaży|książka|książki|autor|autora|klient|klienci|zaufanie|biznes|marka|szkolenia|network marketing|relacje)\b/i;
+    /\b(że|się|jest|oraz|który|która|sprzedaż|klient|klienci|zaufanie|biznes|relacje)\b/i;
 
   if (polishChars.test(input) || polishWords.test(input)) {
     return "polish";
@@ -75,18 +75,11 @@ ${authorContext || ""}
             content: `
 You are a high-level book and product positioning strategist.
 
-Your job is to transform raw author context into a PREMIUM workbook-style product concept that feels like a paid course or system.
+IMPORTANT:
+- always respond in the SAME LANGUAGE as the input
+- do NOT translate
 
-IMPORTANT LANGUAGE RULE:
-- detect the language of the user's source material
-- if the input is in Polish, return ALL fields in Polish
-- if the input is in English, return ALL fields in English
-- do NOT translate into another language
-- keep the output in the same language as the source material
-
-Detected language for this task: ${detectedLanguage}
-
-Return ONLY valid JSON in this exact format:
+Return ONLY valid JSON:
 {
   "author": "",
   "title": "",
@@ -96,86 +89,45 @@ Return ONLY valid JSON in this exact format:
   "hook": ""
 }
 
-CRITICAL RULES:
-
-AUTHOR:
-- extract full name if possible
-
-TITLE (CRITICAL — DIFFERENT LEVEL):
-- must feel like a SYSTEM, FRAMEWORK or MECHANISM
-- must feel proprietary or distinctive
-- must NOT sound generic or common
-- avoid overused words like: blueprint, guide, system (unless stylized and strong)
-- must feel like something you could SELL as a paid program
+TITLE:
+- must feel like a product / system
 - 2–4 words max
-- must sound commercially strong
-- keep it natural in the source language
-
-BAD:
-"The Trust Factor"
-"Client System"
-"Sales Method"
-"Poradnik Sprzedaży"
-"System Klienta"
-
-GOOD:
-"The Trust Engine"
-"The Authority Loop"
-"The Conversion Code"
-"The Client Magnet"
-"Silnik Zaufania"
-"Kod Konwersji"
-"Magnes Klienta"
-"Pętla Autorytetu"
+- distinctive, sellable
+- avoid generic phrases
 
 SUBTITLE:
-- must clearly describe transformation AND outcome
-- must feel practical and execution-oriented
-- must describe WHO + RESULT + HOW
-- must sound like a product promise
-- should fit a workbook / implementation format
-- keep it natural in the source language
+- describe transformation + result
+- practical, execution-based
+- sounds like product promise
 
-GOOD:
-"A practical workbook to turn conversations into consistent high-value clients without cold outreach"
-"Praktyczny workbook, który pomaga zamieniać rozmowy w stałych klientów bez zimnego outreachu"
-
-CATEGORY:
-- broad market category
-- keep it natural in the same language as the input
-
-TONE:
-- choose one of exactly these values:
-  "premium", "classic", "modern", "bold"
-
-HOOK (CRITICAL — MUST BE SHORT):
+HOOK (CRITICAL):
 - MAX 8 words
-- must feel punchy and sharp
-- must be immediately understandable
-- must focus on RESULT
-- no filler words
-- no long phrases
-- keep it natural in the same language as the input
+- must be punchy
+- must NOT repeat the title idea
+- must ADD new value (result / mechanism / benefit)
+- must feel like headline
 
 BAD:
-"Turn your expertise into a reliable income-generating machine"
-"Turn relationships into reliable client acquisition pathways"
-"Zamień swoją wiedzę w niezawodną maszynę generującą dochód"
+Title: Silnik Zaufania
+Hook: Zamieniaj rozmowy w klientów (powtórzenie)
 
 GOOD:
-"Turn conversations into premium clients"
-"Convert trust into predictable revenue"
-"Build clients without chasing"
-"Turn trust into consistent clients"
-"Zamieniaj rozmowy w płacących klientów"
-"Zamień zaufanie w przewidywalną sprzedaż"
-"Buduj klientów bez gonienia"
+Title: Silnik Zaufania
+Hook: Buduj klientów bez presji sprzedaży
+
+GOOD:
+Title: The Authority Loop
+Hook: Build clients without chasing
+
+CATEGORY:
+- natural language
+
+TONE:
+- premium / classic / modern / bold
 
 STRICT:
-- no markdown
+- JSON only
 - no explanation
-- no extra keys
-- return ONLY JSON
 `
           },
           {
@@ -189,25 +141,7 @@ STRICT:
 
     const data = await response.json();
 
-    console.log("OPENAI RAW:", JSON.stringify(data, null, 2));
-
-    if (!response.ok) {
-      return res.status(response.status).json({
-        ok: false,
-        error: "OpenAI API error",
-        openai: data
-      });
-    }
-
     const text = data.choices?.[0]?.message?.content;
-
-    if (!text) {
-      return res.status(500).json({
-        ok: false,
-        error: "Empty response from AI",
-        openai: data
-      });
-    }
 
     const cleaned = text
       .replace(/```json/gi, "")
@@ -219,10 +153,7 @@ STRICT:
     if (!parsed) {
       return res.status(500).json({
         ok: false,
-        error: "Invalid JSON from AI",
-        raw: text,
-        cleaned,
-        openai: data
+        error: "Invalid JSON from AI"
       });
     }
 
@@ -232,14 +163,12 @@ STRICT:
 
     return res.status(200).json({
       ok: true,
-      language: detectedLanguage,
       result: parsed
     });
   } catch (err) {
     return res.status(500).json({
       ok: false,
-      error: "Server error",
-      details: err.message
+      error: err.message
     });
   }
 });
