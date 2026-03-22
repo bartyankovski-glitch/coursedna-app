@@ -1,6 +1,9 @@
 import express from "express";
+import crypto from "crypto";
 
 const router = express.Router();
+
+const selectedVariantsStore = new Map();
 
 function safeParseJSON(text) {
   try {
@@ -47,9 +50,9 @@ function getMeaningfulWords(text) {
     "dla", "jest", "się", "który", "która", "które", "that", "into", "from", "with",
     "without", "the", "and", "for", "your", "this", "these", "those", "practical",
     "praktyczny", "workbook", "guide", "system", "framework", "mechanizm", "metoda",
-    "oraz", "przez", "który", "helps", "help", "using", "oparty", "oparta", "oparte",
-    "bardzo", "more", "most", "less", "oraz", "których", "które", "umożliwia",
-    "pozwala", "pozwolą", "dzieki", "dzięki", "przez", "wobec", "oriented"
+    "przez", "helps", "help", "using", "oparty", "oparta", "oparte",
+    "bardzo", "more", "most", "less", "których", "umożliwia",
+    "pozwala", "pozwolą", "dzieki", "dzięki", "wobec", "oriented"
   ]);
 
   return normalizeTextForCompare(text)
@@ -303,7 +306,9 @@ function isGenericHook(hook, language) {
     "magnetyzm w sprzedazy",
     "magnetyzm w sprzedaży",
     "sprzedaz bez stresu",
-    "sprzedaż bez stresu"
+    "sprzedaż bez stresu",
+    "zaufanie w sprzedazy",
+    "zaufanie w sprzedaży"
   ];
 
   const genericPatternsEn = [
@@ -315,7 +320,8 @@ function isGenericHook(hook, language) {
     "more income",
     "client with ease",
     "growth made easy",
-    "business growth"
+    "business growth",
+    "trust in sales"
   ];
 
   const patterns = language === "polish" ? genericPatternsPl : genericPatternsEn;
@@ -515,7 +521,8 @@ function scoreSubtitleQuality(subtitle, hook, language) {
     "pozycjon",
     "komunikac",
     "metod",
-    "ram"
+    "ram",
+    "model"
   ];
 
   const mechanismWordsEn = [
@@ -527,7 +534,8 @@ function scoreSubtitleQuality(subtitle, hook, language) {
     "positioning",
     "communication",
     "path",
-    "method"
+    "method",
+    "model"
   ];
 
   const mechanismWords = language === "polish" ? mechanismWordsPl : mechanismWordsEn;
@@ -911,6 +919,144 @@ function buildDecisionPaths(language) {
   ];
 }
 
+function clampChapterCount(value) {
+  const n = Number(value || 7);
+
+  if (!Number.isFinite(n)) return 7;
+  if (n < 5) return 5;
+  if (n > 12) return 12;
+
+  return Math.round(n);
+}
+
+function clampVariantCount(value) {
+  const n = Number(value || 3);
+
+  if (!Number.isFinite(n)) return 3;
+  if (n < 2) return 2;
+  if (n > 5) return 5;
+
+  return Math.round(n);
+}
+
+function createVariantId() {
+  return `variant_${crypto.randomBytes(6).toString("hex")}`;
+}
+
+function createSessionId() {
+  return `session_${crypto.randomBytes(8).toString("hex")}`;
+}
+
+function getVariantStrategies(language) {
+  if (language === "polish") {
+    return [
+      {
+        key: "premium_authority",
+        label: "Premium Authority",
+        anglePrompt: `
+Twórz wersję bardziej premium i strategiczną.
+Akcent: autorytet, pozycja, zaufanie, jakość relacji, przewaga ekspercka.
+Tytuł ma brzmieć dojrzale, elegancko i silnie.
+Hook ma sugerować pozycję, nie tanią obietnicę.
+`
+      },
+      {
+        key: "commercial_attraction",
+        label: "Commercial Attraction",
+        anglePrompt: `
+Twórz wersję bardziej komercyjną i rynkową.
+Akcent: przyciąganie klientów, przewidywalny napływ leadów, konwersja bez presji.
+Tytuł ma być bardziej sprzedażowy, ale nadal premium.
+Hook ma być mocny, czytelny i atrakcyjny rynkowo.
+`
+      },
+      {
+        key: "structured_framework",
+        label: "Structured Framework",
+        anglePrompt: `
+Twórz wersję bardziej strukturalną i frameworkową.
+Akcent: model, architektura, mechanizm, uporządkowany proces.
+Tytuł ma sugerować konkretny mechanizm działania.
+Hook ma podkreślać systemowość lub przewidywalność.
+`
+      },
+      {
+        key: "trust_relationship",
+        label: "Trust Relationship",
+        anglePrompt: `
+Twórz wersję bardziej opartą na relacjach i zaufaniu.
+Akcent: komunikacja, relacje, autentyczność, długoterminowa współpraca.
+Tytuł ma być miękko-premium, ale dalej produktowy.
+Hook ma pokazywać wartość relacji bez banału.
+`
+      },
+      {
+        key: "positioning_conversion",
+        label: "Positioning Conversion",
+        anglePrompt: `
+Twórz wersję bardziej opartą na pozycjonowaniu i konwersji.
+Akcent: pozycja eksperta, lepsze rozmowy, przewidywalna zamiana wiedzy na klientów.
+Tytuł ma być bardziej biznesowy i konkretny.
+Hook ma pokazywać przewagę rynkową.
+`
+      }
+    ];
+  }
+
+  return [
+    {
+      key: "premium_authority",
+      label: "Premium Authority",
+      anglePrompt: `
+Create a more premium and strategic version.
+Emphasis: authority, positioning, trust, quality of relationships, expert advantage.
+The title should feel elegant, mature and strong.
+The hook should signal position, not cheap promise.
+`
+    },
+    {
+      key: "commercial_attraction",
+      label: "Commercial Attraction",
+      anglePrompt: `
+Create a more commercial and market-oriented version.
+Emphasis: attracting clients, predictable lead flow, conversion without pressure.
+The title should be more sellable, but still premium.
+The hook should be clear, strong and market-relevant.
+`
+    },
+    {
+      key: "structured_framework",
+      label: "Structured Framework",
+      anglePrompt: `
+Create a more structured and framework-oriented version.
+Emphasis: model, architecture, mechanism, organized process.
+The title should suggest a concrete operating logic.
+The hook should emphasize systemization or predictability.
+`
+    },
+    {
+      key: "trust_relationship",
+      label: "Trust Relationship",
+      anglePrompt: `
+Create a more relationship- and trust-based version.
+Emphasis: communication, relationships, authenticity, long-term collaboration.
+The title should be softer-premium but still product-like.
+The hook should express relational value without sounding generic.
+`
+    },
+    {
+      key: "positioning_conversion",
+      label: "Positioning Conversion",
+      anglePrompt: `
+Create a more positioning- and conversion-based version.
+Emphasis: expert positioning, better conversations, predictable conversion of knowledge into clients.
+The title should feel business-driven and concrete.
+The hook should show strategic advantage.
+`
+    }
+  ];
+}
+
 async function callOpenAI(messages, temperature = 0.85) {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -1240,7 +1386,12 @@ Rewrite the title now.
   };
 }
 
-async function generatePositioning({ combinedInput, detectedLanguage }) {
+async function generatePositioning({
+  combinedInput,
+  detectedLanguage,
+  variantAnglePrompt = "",
+  variantLabel = ""
+}) {
   const mainSystemPrompt = `
 You are a high-level book and product positioning strategist.
 
@@ -1252,6 +1403,10 @@ IMPORTANT LANGUAGE RULE:
 - for this task, detected language is: ${detectedLanguage}
 
 Your job is to transform raw author context into a premium workbook-style product concept.
+
+VARIANT MODE:
+${variantLabel ? `- current variant label: ${variantLabel}` : "- standard mode"}
+${variantAnglePrompt || ""}
 
 Return ONLY valid JSON in this exact format:
 {
@@ -1424,7 +1579,7 @@ STRICT:
         content: combinedInput
       }
     ],
-    0.85
+    0.9
   );
 
   if (!response.ok) {
@@ -1752,20 +1907,99 @@ ${combinedInput}
   };
 }
 
-function clampChapterCount(value) {
-  const n = Number(value || 7);
+async function generateSingleVariant({
+  combinedInput,
+  detectedLanguage,
+  strategy
+}) {
+  const positioningResult = await generatePositioning({
+    combinedInput,
+    detectedLanguage,
+    variantAnglePrompt: strategy?.anglePrompt || "",
+    variantLabel: strategy?.label || ""
+  });
 
-  if (!Number.isFinite(n)) return 7;
-  if (n < 5) return 5;
-  if (n > 12) return 12;
+  if (!positioningResult.ok) {
+    return positioningResult;
+  }
 
-  return Math.round(n);
+  const positioning = positioningResult.result;
+  const cover = buildCoverPayload(positioning);
+
+  return {
+    ok: true,
+    variant: {
+      id: createVariantId(),
+      strategyKey: strategy?.key || "default",
+      strategyLabel: strategy?.label || "Default",
+      createdAt: new Date().toISOString(),
+      hookScore: positioningResult.hookScore,
+      quality: positioningResult.quality,
+      positioning,
+      cover
+    }
+  };
+}
+
+async function generateVariants({
+  combinedInput,
+  detectedLanguage,
+  variantCount
+}) {
+  const strategies = getVariantStrategies(detectedLanguage).slice(0, variantCount);
+  const variants = [];
+
+  for (const strategy of strategies) {
+    const variantResult = await generateSingleVariant({
+      combinedInput,
+      detectedLanguage,
+      strategy
+    });
+
+    if (!variantResult.ok) {
+      return variantResult;
+    }
+
+    variants.push(variantResult.variant);
+  }
+
+  return {
+    ok: true,
+    language: detectedLanguage,
+    variants
+  };
 }
 
 router.get("/author/analyze", (_req, res) => {
   return res.status(200).json({
     ok: true,
     message: "GET test działa"
+  });
+});
+
+router.get("/variants/selected/:sessionId", (req, res) => {
+  const sessionId = String(req.params.sessionId || "").trim();
+
+  if (!sessionId) {
+    return res.status(400).json({
+      ok: false,
+      error: "Missing sessionId"
+    });
+  }
+
+  const selected = selectedVariantsStore.get(sessionId);
+
+  if (!selected) {
+    return res.status(404).json({
+      ok: false,
+      error: "Selected variant not found"
+    });
+  }
+
+  return res.status(200).json({
+    ok: true,
+    sessionId,
+    selected
   });
 });
 
@@ -1806,16 +2040,120 @@ router.post("/author/analyze", async (req, res) => {
   }
 });
 
+router.post("/generate-variants", async (req, res) => {
+  const {
+    linkedinInput,
+    authorContext,
+    sourceText,
+    options = {}
+  } = req.body || {};
+
+  if (!linkedinInput && !authorContext && !sourceText) {
+    return res.status(400).json({
+      ok: false,
+      error: "No input"
+    });
+  }
+
+  const combinedInput = mergeInputs({
+    linkedinInput,
+    authorContext,
+    sourceText
+  });
+
+  const detectedLanguage = options.language && options.language !== "auto"
+    ? options.language === "pl"
+      ? "polish"
+      : "english"
+    : detectLanguage(combinedInput);
+
+  const variantCount = clampVariantCount(options.variantCount || 3);
+  const sessionId = String(options.sessionId || createSessionId());
+
+  try {
+    const variantsResult = await generateVariants({
+      combinedInput,
+      detectedLanguage,
+      variantCount
+    });
+
+    if (!variantsResult.ok) {
+      return res.status(variantsResult.status || 500).json(variantsResult);
+    }
+
+    return res.status(200).json({
+      ok: true,
+      language: detectedLanguage,
+      sessionId,
+      variants: variantsResult.variants
+    });
+  } catch (err) {
+    return res.status(500).json({
+      ok: false,
+      error: err.message
+    });
+  }
+});
+
+router.post("/variants/select", async (req, res) => {
+  const {
+    sessionId,
+    variant,
+    variantId
+  } = req.body || {};
+
+  const safeSessionId = String(sessionId || "").trim() || createSessionId();
+
+  if (!variant && !variantId) {
+    return res.status(400).json({
+      ok: false,
+      error: "Missing variant or variantId"
+    });
+  }
+
+  let payloadToSave = null;
+
+  if (variant && typeof variant === "object") {
+    payloadToSave = {
+      id: variant.id || variantId || createVariantId(),
+      strategyKey: variant.strategyKey || "manual",
+      strategyLabel: variant.strategyLabel || "Selected",
+      createdAt: variant.createdAt || new Date().toISOString(),
+      hookScore: variant.hookScore ?? null,
+      quality: variant.quality || null,
+      positioning: trimResultFields({ ...(variant.positioning || {}) }),
+      cover: variant.cover || buildCoverPayload(variant.positioning || {})
+    };
+  } else {
+    payloadToSave = {
+      id: String(variantId),
+      strategyKey: "selected_by_id",
+      strategyLabel: "Selected by ID",
+      createdAt: new Date().toISOString()
+    };
+  }
+
+  selectedVariantsStore.set(safeSessionId, payloadToSave);
+
+  return res.status(200).json({
+    ok: true,
+    sessionId: safeSessionId,
+    selected: payloadToSave
+  });
+});
+
 router.post("/generate-preview", async (req, res) => {
   const {
     linkedinInput,
     authorContext,
     sourceText,
     positioning,
+    selectedVariant,
+    sessionId,
     options = {}
   } = req.body || {};
 
-  if (!linkedinInput && !authorContext && !sourceText && !positioning) {
+  if (!linkedinInput && !authorContext && !sourceText && !positioning && !selectedVariant && !sessionId) {
     return res.status(400).json({
       ok: false,
       error: "No input"
@@ -1834,18 +2172,50 @@ router.post("/generate-preview", async (req, res) => {
       : "english"
     : detectLanguage(
         combinedInput ||
-        JSON.stringify(positioning || {})
+        JSON.stringify(positioning || selectedVariant || {})
       );
 
   const includeOutline = options.includeOutline !== false;
   const includeSample = options.includeSample !== false;
   const includeDecisionPaths = options.includeDecisionPaths !== false;
+  const useSavedSelection = options.useSavedSelection === true;
   const chapterCount = clampChapterCount(options.chapterCount || 7);
 
   try {
-    let finalPositioning = positioning || null;
+    let finalPositioning = null;
     let hookScore = null;
     let quality = null;
+    let selectionMeta = null;
+
+    if (selectedVariant?.positioning) {
+      finalPositioning = { ...selectedVariant.positioning };
+      selectionMeta = {
+        source: "selectedVariant",
+        variantId: selectedVariant.id || null
+      };
+    } else if (positioning) {
+      finalPositioning = { ...positioning };
+      selectionMeta = {
+        source: "positioning",
+        variantId: null
+      };
+    } else if (useSavedSelection && sessionId) {
+      const saved = selectedVariantsStore.get(String(sessionId).trim());
+
+      if (!saved?.positioning) {
+        return res.status(404).json({
+          ok: false,
+          error: "Saved selected variant not found for this sessionId"
+        });
+      }
+
+      finalPositioning = { ...saved.positioning };
+      selectionMeta = {
+        source: "savedSelection",
+        variantId: saved.id || null,
+        sessionId: String(sessionId).trim()
+      };
+    }
 
     if (!finalPositioning) {
       const positioningResult = await generatePositioning({
@@ -1860,6 +2230,10 @@ router.post("/generate-preview", async (req, res) => {
       finalPositioning = positioningResult.result;
       hookScore = positioningResult.hookScore;
       quality = positioningResult.quality;
+      selectionMeta = {
+        source: "freshGeneration",
+        variantId: null
+      };
     } else {
       trimResultFields(finalPositioning);
 
@@ -1930,6 +2304,7 @@ router.post("/generate-preview", async (req, res) => {
       language: detectedLanguage,
       hookScore,
       quality,
+      selectionMeta,
       preview: {
         positioning: finalPositioning,
         cover,
