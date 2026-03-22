@@ -238,6 +238,15 @@ TITLE (CRITICAL):
 - title should feel distinctive, memorable and commercially strong
 - 2-4 words max
 - keep it natural in the source language
+- MUST sound natural in the target language
+- avoid direct translation structures from English
+- in Polish, prefer noun-based constructions like:
+  "Magnes Zaufania"
+  "Kod Konwersji"
+  "Pętla Autorytetu"
+- avoid unnatural Polish title forms like:
+  "Zaufany Magnet"
+  "Konwersyjny Klient"
 
 BAD ENGLISH:
 "Trust-Based Sales System"
@@ -256,11 +265,13 @@ BAD POLISH:
 "System zaufania w sprzedaży"
 "Sprzedaż oparta na relacjach"
 "Metoda pozyskiwania klientów"
+"Zaufany Magnet"
 
 GOOD POLISH:
 "Silnik Zaufania"
 "Pętla Autorytetu"
 "Kod Konwersji"
+"Magnes Zaufania"
 "Magnes Klienta"
 "Mechanizm Poleceń"
 
