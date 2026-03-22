@@ -42,6 +42,8 @@
       border: 1px solid #ddd;
       box-sizing: border-box;
       font-size: 14px;
+      background: #fff;
+      color: #0f172a;
     }
 
     textarea {
@@ -79,6 +81,21 @@
     .cover-wrap {
       display: flex;
       justify-content: center;
+    }
+
+    .cover-shell {
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .cover-badge {
+      font-size: 12px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      opacity: 0.55;
+      margin-bottom: 10px;
+      color: #334155;
+      font-weight: 700;
     }
 
     .cover {
@@ -132,20 +149,28 @@
     }
 
     .cover-title {
-      font-size: 42px;
-      line-height: 1.04;
+      font-size: 48px;
+      line-height: 1.05;
       font-weight: 800;
       margin: 0 0 18px;
       max-width: 95%;
       text-wrap: balance;
+      word-break: keep-all;
+      overflow-wrap: normal;
+      hyphens: manual;
     }
 
     .cover-subtitle {
-      font-size: 17px;
-      line-height: 1.5;
+      font-size: 18px;
+      line-height: 1.4;
       opacity: 0.95;
       max-width: 94%;
       margin-bottom: 28px;
+      overflow: visible;
+      display: block;
+      word-break: normal;
+      overflow-wrap: break-word;
+      text-wrap: pretty;
     }
 
     .cover-divider {
@@ -194,7 +219,8 @@
         grid-template-columns: 1fr;
       }
 
-      .cover {
+      .cover,
+      .cover-shell {
         max-width: 100%;
       }
     }
@@ -255,18 +281,22 @@
 
       <div class="card">
         <div class="cover-wrap">
-          <div id="cover" class="cover premium">
-            <div>
-              <div class="cover-topline" id="coverTopline">AIBOOK WORKBOOK</div>
-              <div class="cover-hook" id="coverHook">Build a system that turns knowledge into clients</div>
-              <h1 class="cover-title" id="coverTitle">Tytuł AiBooka</h1>
-              <div class="cover-divider"></div>
-              <div class="cover-subtitle" id="coverSubtitle">Podtytuł opisujący transformację, system i wartość produktu.</div>
-            </div>
+          <div class="cover-shell">
+            <div class="cover-badge">WORKBOOK SYSTEM</div>
 
-            <div class="cover-bottom">
-              <div class="cover-author" id="coverAuthor">Autor</div>
-              <div class="cover-meta" id="coverMeta">Business • premium</div>
+            <div id="cover" class="cover premium">
+              <div>
+                <div class="cover-topline" id="coverTopline">AIBOOK WORKBOOK</div>
+                <div class="cover-hook" id="coverHook">Build a system that turns knowledge into clients</div>
+                <h1 class="cover-title" id="coverTitle">Tytuł AiBooka</h1>
+                <div class="cover-divider"></div>
+                <div class="cover-subtitle" id="coverSubtitle">Podtytuł opisujący transformację, system i wartość produktu.</div>
+              </div>
+
+              <div class="cover-bottom">
+                <div class="cover-author" id="coverAuthor">Autor</div>
+                <div class="cover-meta" id="coverMeta">Business • premium</div>
+              </div>
             </div>
           </div>
         </div>
@@ -326,11 +356,13 @@
       document.getElementById("coverMeta").innerText = category + " • " + tone;
     }
 
-    document.getElementById("authorName").addEventListener("input", updatePreview);
-    document.getElementById("bookTitle").addEventListener("input", updatePreview);
-    document.getElementById("bookSubtitle").addEventListener("input", updatePreview);
-    document.getElementById("category").addEventListener("input", updatePreview);
-    document.getElementById("hook").addEventListener("input", updatePreview);
+    ["authorName", "bookTitle", "bookSubtitle", "category", "hook"].forEach(id => {
+      const el = document.getElementById(id);
+      el.addEventListener("input", updatePreview);
+      el.addEventListener("keyup", updatePreview);
+      el.addEventListener("change", updatePreview);
+    });
+
     document.getElementById("tone").addEventListener("change", updatePreview);
 
     async function analyzeAuthor() {
