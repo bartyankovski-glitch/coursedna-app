@@ -48,7 +48,8 @@ function getMeaningfulWords(text) {
     "without", "the", "and", "for", "your", "this", "these", "those", "practical",
     "praktyczny", "workbook", "guide", "system", "framework", "mechanizm", "metoda",
     "oraz", "przez", "który", "helps", "help", "using", "oparty", "oparta", "oparte",
-    "bardzo", "more", "most", "less"
+    "bardzo", "more", "most", "less", "oraz", "których", "które", "umożliwia",
+    "pozwala", "pozwolą", "dzieki", "dzięki", "przez", "wobec", "oriented"
   ]);
 
   return normalizeTextForCompare(text)
@@ -96,10 +97,11 @@ function hasSemanticClash(hook, subtitle) {
     ["konwers", "konwers"],
     ["relac", "relac"],
     ["rozmow", "rozmow"],
-    ["dochód", "doch"],
+    ["doch", "doch"],
     ["przych", "przych"],
     ["zaufan", "zaufan"],
     ["autorytet", "autorytet"],
+    ["pozyc", "pozyc"],
     ["income", "income"],
     ["client", "client"],
     ["sale", "sale"],
@@ -110,7 +112,8 @@ function hasSemanticClash(hook, subtitle) {
     ["conversation", "conversation"],
     ["revenue", "revenue"],
     ["trust", "trust"],
-    ["authority", "authority"]
+    ["authority", "authority"],
+    ["position", "position"]
   ];
 
   let matches = 0;
@@ -142,6 +145,10 @@ function normalizeToneValue(tone) {
 }
 
 function trimResultFields(parsed) {
+  if (!parsed || typeof parsed !== "object") {
+    return parsed;
+  }
+
   if (parsed.author) parsed.author = String(parsed.author).trim();
   if (parsed.title) parsed.title = String(parsed.title).trim();
   if (parsed.subtitle) parsed.subtitle = String(parsed.subtitle).trim();
@@ -159,8 +166,8 @@ function countWords(text) {
     .filter(Boolean).length;
 }
 
-function startsWithVerb(hook, language) {
-  const normalized = normalizeTextForCompare(hook);
+function startsWithVerb(text, language) {
+  const normalized = normalizeTextForCompare(text);
   const firstWord = normalized.split(" ")[0] || "";
 
   if (!firstWord) return false;
@@ -188,7 +195,11 @@ function startsWithVerb(hook, language) {
     "zmien",
     "zmień",
     "przeksztalc",
-    "przekształć"
+    "przekształć",
+    "zastosuj",
+    "stworz",
+    "tworz",
+    "twórz"
   ];
 
   const englishVerbStarts = [
@@ -205,7 +216,8 @@ function startsWithVerb(hook, language) {
     "use",
     "master",
     "transform",
-    "change"
+    "change",
+    "apply"
   ];
 
   if (language === "polish") {
@@ -234,7 +246,8 @@ function hasWeakHookStyle(hook, language) {
     "stworz ",
     "stwórz ",
     "zmien ",
-    "zmień "
+    "zmień ",
+    "zastosuj "
   ];
 
   const badPhrasesEn = [
@@ -245,7 +258,8 @@ function hasWeakHookStyle(hook, language) {
     "build ",
     "gain ",
     "create ",
-    "change "
+    "change ",
+    "apply "
   ];
 
   const patterns = language === "polish" ? badPhrasesPl : badPhrasesEn;
@@ -284,7 +298,13 @@ function isGenericHook(hook, language) {
     "klient bez wysilku",
     "klient bez wysiłku",
     "rozwoj biznesu",
-    "rozwój biznesu"
+    "rozwój biznesu",
+    "klient ktory wybiera",
+    "klient który wybiera",
+    "magnetyzm w sprzedazy",
+    "magnetyzm w sprzedaży",
+    "sprzedaz bez stresu",
+    "sprzedaż bez stresu"
   ];
 
   const genericPatternsEn = [
@@ -300,6 +320,77 @@ function isGenericHook(hook, language) {
   ];
 
   const patterns = language === "polish" ? genericPatternsPl : genericPatternsEn;
+
+  for (const pattern of patterns) {
+    if (normalized.includes(pattern)) return true;
+  }
+
+  return false;
+}
+
+function isInstructionalSubtitle(subtitle, language) {
+  const normalized = normalizeTextForCompare(subtitle);
+  const firstWord = normalized.split(" ")[0] || "";
+
+  if (!firstWord) return true;
+
+  const badStartsPl = [
+    "zastosuj",
+    "odkryj",
+    "uzyskaj",
+    "zbuduj",
+    "stworz",
+    "stwórz",
+    "poznaj",
+    "naucz",
+    "dowiedz"
+  ];
+
+  const badStartsEn = [
+    "apply",
+    "discover",
+    "gain",
+    "build",
+    "create",
+    "learn",
+    "understand"
+  ];
+
+  return language === "polish"
+    ? badStartsPl.includes(firstWord)
+    : badStartsEn.includes(firstWord);
+}
+
+function isGenericSubtitle(subtitle, language) {
+  const normalized = normalizeTextForCompare(subtitle);
+
+  if (!normalized) return true;
+
+  const patternsPl = [
+    "sprawdzone strategie i narzedzia",
+    "sprawdzone strategie i narzędzia",
+    "pozwola ci",
+    "pozwolą ci",
+    "umozliwia ci",
+    "umożliwia ci",
+    "zwiekszyc lojalnosc",
+    "zwiększyć lojalność",
+    "naturalny i efektywny",
+    "skutecznie przyciagac klientow",
+    "skutecznie przyciągać klientów",
+    "dlugotrwala wspolpraca",
+    "długotrwała współpraca"
+  ];
+
+  const patternsEn = [
+    "proven strategies and tools",
+    "will help you",
+    "natural and effective",
+    "high value clients",
+    "sustainable growth"
+  ];
+
+  const patterns = language === "polish" ? patternsPl : patternsEn;
 
   for (const pattern of patterns) {
     if (normalized.includes(pattern)) return true;
@@ -351,7 +442,9 @@ function scoreHookQuality(hook, language) {
     "pościgu",
     "zaufania",
     "autorytetu",
-    "konwersji"
+    "konwersji",
+    "pozycje",
+    "pozycję"
   ];
 
   const contrastWordsEn = [
@@ -360,7 +453,8 @@ function scoreHookQuality(hook, language) {
     "trust",
     "authority",
     "conversion",
-    "pressure"
+    "pressure",
+    "position"
   ];
 
   const genericWords = language === "polish" ? genericWordsPl : genericWordsEn;
@@ -380,6 +474,7 @@ function scoreHookQuality(hook, language) {
   }
 
   if (contrastHits >= 1) score += 10;
+  if (words >= 2 && words <= 4) score += 5;
 
   const bannedStartsPl = ["uzyskaj", "zbuduj", "odkryj", "stwórz", "stworz", "zmień", "zmien"];
   const bannedStartsEn = ["build", "discover", "gain", "create", "change"];
@@ -392,6 +487,164 @@ function scoreHookQuality(hook, language) {
   if (score > 100) score = 100;
 
   return score;
+}
+
+function scoreSubtitleQuality(subtitle, hook, language) {
+  const value = String(subtitle || "").trim();
+  const normalized = normalizeTextForCompare(value);
+
+  if (!normalized) return 0;
+
+  let score = 100;
+  const words = countWords(value);
+
+  if (isInstructionalSubtitle(value, language)) score -= 25;
+  if (isGenericSubtitle(value, language)) score -= 25;
+  if (hasTooMuchOverlap(hook, value)) score -= 30;
+  if (hasSemanticClash(hook, value)) score -= 30;
+  if (words > 28) score -= 15;
+  if (words < 8) score -= 10;
+
+  const mechanismWordsPl = [
+    "system",
+    "struktura",
+    "proces",
+    "wdroż",
+    "wdrozen",
+    "ścież",
+    "sciez",
+    "pozycjon",
+    "komunikac",
+    "metod",
+    "ram"
+  ];
+
+  const mechanismWordsEn = [
+    "system",
+    "structure",
+    "process",
+    "implementation",
+    "framework",
+    "positioning",
+    "communication",
+    "path",
+    "method"
+  ];
+
+  const mechanismWords = language === "polish" ? mechanismWordsPl : mechanismWordsEn;
+
+  let mechanismHits = 0;
+  for (const word of mechanismWords) {
+    if (normalized.includes(word)) mechanismHits++;
+  }
+
+  if (mechanismHits >= 1) score += 10;
+  if (mechanismHits >= 2) score += 10;
+
+  if (score < 0) score = 0;
+  if (score > 100) score = 100;
+
+  return score;
+}
+
+function scoreHookSubtitleConsistency(hook, subtitle) {
+  const hookValue = String(hook || "").trim();
+  const subtitleValue = String(subtitle || "").trim();
+
+  if (!hookValue || !subtitleValue) return 0;
+
+  let score = 100;
+
+  if (hasTooMuchOverlap(hookValue, subtitleValue)) score -= 45;
+  if (hasSemanticClash(hookValue, subtitleValue)) score -= 35;
+
+  const hookWords = getMeaningfulWords(hookValue);
+  const subtitleWords = getMeaningfulWords(subtitleValue);
+
+  if (hookWords.length && subtitleWords.length) {
+    const subtitleSet = new Set(subtitleWords);
+    const commonWords = hookWords.filter((word) => subtitleSet.has(word));
+    const overlapRatio = commonWords.length / hookWords.length;
+
+    if (overlapRatio >= 0.5) score -= 20;
+    else if (overlapRatio >= 0.3) score -= 10;
+  }
+
+  if (score < 0) score = 0;
+  if (score > 100) score = 100;
+
+  return score;
+}
+
+function qualityGate({ positioning, language }) {
+  const hook = positioning?.hook || "";
+  const subtitle = positioning?.subtitle || "";
+  const title = positioning?.title || "";
+
+  const hookScore = scoreHookQuality(hook, language);
+  const subtitleScore = scoreSubtitleQuality(subtitle, hook, language);
+  const consistencyScore = scoreHookSubtitleConsistency(hook, subtitle);
+
+  const overall = Math.round(
+    (hookScore * 0.35) +
+    (subtitleScore * 0.35) +
+    (consistencyScore * 0.30)
+  );
+
+  const notes = [];
+  const flags = {
+    needsHookRepair: hookScore < 70,
+    needsSubtitleRepair: subtitleScore < 70,
+    needsConsistencyRepair: consistencyScore < 60,
+    needsTitleReview: false
+  };
+
+  if (!title || countWords(title) < 1) {
+    flags.needsTitleReview = true;
+    notes.push("missing or weak title");
+  }
+
+  if (hasWeakHookStyle(hook, language)) {
+    notes.push("hook has weak structural style");
+  }
+
+  if (isGenericHook(hook, language)) {
+    notes.push("hook sounds generic");
+  }
+
+  if (isInstructionalSubtitle(subtitle, language)) {
+    notes.push("subtitle sounds instructional");
+  }
+
+  if (isGenericSubtitle(subtitle, language)) {
+    notes.push("subtitle sounds generic");
+  }
+
+  if (hasTooMuchOverlap(hook, subtitle)) {
+    notes.push("hook and subtitle overlap too much");
+  }
+
+  if (hasSemanticClash(hook, subtitle)) {
+    notes.push("hook and subtitle repeat the same promise");
+  }
+
+  const passed =
+    hookScore >= 70 &&
+    subtitleScore >= 70 &&
+    consistencyScore >= 60 &&
+    !flags.needsTitleReview;
+
+  return {
+    passed,
+    scores: {
+      hook: hookScore,
+      subtitle: subtitleScore,
+      consistency: consistencyScore,
+      overall
+    },
+    flags,
+    notes
+  };
 }
 
 function mergeInputs({ linkedinInput = "", authorContext = "", sourceText = "" }) {
@@ -602,10 +855,15 @@ Rewrite the hook now.
 }
 
 async function repairSubtitleIfNeeded(parsed, detectedLanguage) {
+  const subtitleScore = scoreSubtitleQuality(parsed.subtitle, parsed.hook, detectedLanguage);
+  const consistencyScore = scoreHookSubtitleConsistency(parsed.hook, parsed.subtitle);
+
   const needsSubtitleRepair =
     parsed.hook &&
     parsed.subtitle &&
     (
+      subtitleScore < 70 ||
+      consistencyScore < 60 ||
       hasTooMuchOverlap(parsed.hook, parsed.subtitle) ||
       hasSemanticClash(parsed.hook, parsed.subtitle)
     );
@@ -635,7 +893,9 @@ GOAL:
 - the hook is the promise / result / headline
 - the subtitle must explain the mechanism, structure, path, implementation or operating logic
 - the subtitle must NOT repeat the same outcome framing as the hook
-- the subtitle must feel like: how this actually works
+- the subtitle must feel like how this actually works
+- the subtitle must sound like a premium workbook promise, not a blog sentence
+- avoid generic phrases like "sprawdzone strategie i narzędzia" unless truly necessary
 
 RULES:
 - keep the same overall product direction
@@ -646,6 +906,7 @@ RULES:
 - make it practical, clear and premium
 - good subtitle = workbook promise + method
 - avoid making subtitle a second hook
+- avoid starting with an instruction verb if possible
 `;
 
   const repairUserPrompt = `
@@ -919,10 +1180,16 @@ STRICT:
   );
   trimResultFields(subtitleRepaired);
 
+  const quality = qualityGate({
+    positioning: subtitleRepaired,
+    language: detectedLanguage
+  });
+
   return {
     ok: true,
     language: detectedLanguage,
-    hookScore: hookRepaired.hookScore,
+    hookScore: quality.scores.hook,
+    quality,
     result: subtitleRepaired
   };
 }
@@ -1191,6 +1458,16 @@ ${combinedInput}
   };
 }
 
+function clampChapterCount(value) {
+  const n = Number(value || 7);
+
+  if (!Number.isFinite(n)) return 7;
+  if (n < 5) return 5;
+  if (n > 12) return 12;
+
+  return Math.round(n);
+}
+
 router.get("/author/analyze", (_req, res) => {
   return res.status(200).json({
     ok: true,
@@ -1199,7 +1476,7 @@ router.get("/author/analyze", (_req, res) => {
 });
 
 router.post("/author/analyze", async (req, res) => {
-  const { linkedinInput, authorContext, sourceText } = req.body;
+  const { linkedinInput, authorContext, sourceText } = req.body || {};
 
   if (!linkedinInput && !authorContext && !sourceText) {
     return res.status(400).json({
@@ -1269,11 +1546,12 @@ router.post("/generate-preview", async (req, res) => {
   const includeOutline = options.includeOutline !== false;
   const includeSample = options.includeSample !== false;
   const includeDecisionPaths = options.includeDecisionPaths !== false;
-  const chapterCount = Number(options.chapterCount || 7);
+  const chapterCount = clampChapterCount(options.chapterCount || 7);
 
   try {
     let finalPositioning = positioning || null;
     let hookScore = null;
+    let quality = null;
 
     if (!finalPositioning) {
       const positioningResult = await generatePositioning({
@@ -1287,13 +1565,28 @@ router.post("/generate-preview", async (req, res) => {
 
       finalPositioning = positioningResult.result;
       hookScore = positioningResult.hookScore;
+      quality = positioningResult.quality;
     } else {
       trimResultFields(finalPositioning);
+
       const repairedHook = await repairHookIfNeeded(finalPositioning, detectedLanguage);
       finalPositioning = repairedHook.parsed;
       hookScore = repairedHook.hookScore;
+
       finalPositioning = await repairSubtitleIfNeeded(finalPositioning, detectedLanguage);
       trimResultFields(finalPositioning);
+
+      quality = qualityGate({
+        positioning: finalPositioning,
+        language: detectedLanguage
+      });
+    }
+
+    if (!quality) {
+      quality = qualityGate({
+        positioning: finalPositioning,
+        language: detectedLanguage
+      });
     }
 
     const cover = buildCoverPayload(finalPositioning);
@@ -1338,6 +1631,7 @@ router.post("/generate-preview", async (req, res) => {
       ok: true,
       language: detectedLanguage,
       hookScore,
+      quality,
       preview: {
         positioning: finalPositioning,
         cover,
