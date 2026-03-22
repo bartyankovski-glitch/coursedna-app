@@ -71,7 +71,10 @@ function hasTooMuchOverlap(hook, subtitle) {
   const hookNormalized = normalizeTextForCompare(hook);
   const subtitleNormalized = normalizeTextForCompare(subtitle);
 
-  if (subtitleNormalized.includes(hookNormalized) || hookNormalized.includes(subtitleNormalized)) {
+  if (
+    subtitleNormalized.includes(hookNormalized) ||
+    hookNormalized.includes(subtitleNormalized)
+  ) {
     return true;
   }
 
@@ -766,8 +769,10 @@ Rewrite the hook now.
     const needsSubtitleRepair =
       parsed.hook &&
       parsed.subtitle &&
-      (hasTooMuchOverlap(parsed.hook, parsed.subtitle) ||
-        hasSemanticClash(parsed.hook, parsed.subtitle));
+      (
+        hasTooMuchOverlap(parsed.hook, parsed.subtitle) ||
+        hasSemanticClash(parsed.hook, parsed.subtitle)
+      );
 
     if (needsSubtitleRepair) {
       const repairSystemPrompt = `
