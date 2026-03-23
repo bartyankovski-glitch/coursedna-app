@@ -21,6 +21,13 @@ function safeParseJSON(text) {
   }
 }
 
+function cleanModelText(text) {
+  return String(text || "")
+    .replace(/```json/gi, "")
+    .replace(/```/g, "")
+    .trim();
+}
+
 function detectLanguage(text) {
   const input = String(text || "").trim();
 
@@ -45,20 +52,90 @@ function normalizeTextForCompare(text) {
     .trim();
 }
 
+function countWords(text) {
+  return normalizeTextForCompare(text)
+    .split(" ")
+    .filter(Boolean).length;
+}
+
 function getMeaningfulWords(text) {
   const stopwords = new Set([
     "i", "oraz", "a", "to", "w", "we", "z", "ze", "na", "do", "od", "po", "bez",
-    "dla", "jest", "się", "który", "która", "które", "that", "into", "from", "with",
-    "without", "the", "and", "for", "your", "this", "these", "those", "practical",
-    "praktyczny", "workbook", "guide", "system", "framework", "mechanizm", "metoda",
-    "przez", "helps", "help", "using", "oparty", "oparta", "oparte",
-    "bardzo", "more", "most", "less", "których", "umożliwia",
-    "pozwala", "pozwolą", "dzieki", "dzięki", "wobec", "oriented"
+    "dla", "jest", "się", "który", "która", "które",
+    "that", "into", "from", "with", "without", "the", "and", "for", "your",
+    "this", "these", "those", "practical", "praktyczny", "workbook", "guide",
+    "system", "framework", "mechanizm", "metoda", "przez", "helps", "help",
+    "using", "oparty", "oparta", "oparte", "bardzo", "more", "most", "less",
+    "których", "umożliwia", "pozwala", "pozwolą", "dzieki", "dzięki", "wobec",
+    "oriented", "jak", "how", "który", "która", "które"
   ]);
 
   return normalizeTextForCompare(text)
     .split(" ")
     .filter((word) => word.length > 3 && !stopwords.has(word));
+}
+
+function normalizeToneValue(tone) {
+  const value = String(tone || "")
+    .trim()
+    .toLowerCase();
+
+  return ["premium", "classic", "modern", "bold"].includes(value)
+    ? value
+    : "premium";
+}
+
+function trimResultFields(parsed) {
+  if (!parsed || typeof parsed !== "object") {
+    return parsed;
+  }
+
+  if (parsed.author) parsed.author = String(parsed.author).trim();
+  if (parsed.title) parsed.title = String(parsed.title).trim();
+  if (parsed.subtitle) parsed.subtitle = String(parsed.subtitle).trim();
+  if (parsed.category) parsed.category = String(parsed.category).trim();
+  if (parsed.hook) parsed.hook = String(parsed.hook).trim().slice(0, 80);
+
+  parsed.tone = normalizeToneValue(parsed.tone || "premium");
+
+  return parsed;
+}
+
+function startsWithVerb(text, language) {
+  const normalized = normalizeTextForCompare(text);
+  const firstWord = normalized.split(" ")[0] || "";
+
+  if (!firstWord) return false;
+
+  const polishVerbStarts = [
+    "zbuduj", "odkryj", "uzyskaj", "stworz", "stwórz", "buduj", "zacznij",
+    "przyciagnij", "przyciągnij", "zamien", "zamień", "zwieksz", "zwiększ",
+    "osiagnij", "osiągnij", "zdobadz", "zdobądź", "pokonaj", "wykorzystaj",
+    "zmien", "zmień", "przeksztalc", "przekształć", "zastosuj", "tworz", "twórz",
+    "naucz", "poznaj", "dowiedz"
+  ];
+
+  const englishVerbStarts = [
+    "build", "discover", "gain", "create", "start", "attract", "turn",
+    "increase", "achieve", "win", "use", "master", "transform", "change",
+    "apply", "learn", "understand"
+  ];
+
+  if (language === "polish") {
+    return polishVerbStarts.includes(firstWord);
+  }
+
+  return englishVerbStarts.includes(firstWord);
+}
+
+function startsWithHowStyle(text, language) {
+  const normalized = normalizeTextForCompare(text);
+
+  if (language === "polish") {
+    return normalized.startsWith("jak ");
+  }
+
+  return normalized.startsWith("how ");
 }
 
 function hasTooMuchOverlap(hook, subtitle) {
@@ -131,105 +208,6 @@ function hasSemanticClash(hook, subtitle) {
   return matches >= 1;
 }
 
-function cleanModelText(text) {
-  return String(text || "")
-    .replace(/```json/gi, "")
-    .replace(/```/g, "")
-    .trim();
-}
-
-function normalizeToneValue(tone) {
-  const value = String(tone || "")
-    .trim()
-    .toLowerCase();
-
-  return ["premium", "classic", "modern", "bold"].includes(value)
-    ? value
-    : "premium";
-}
-
-function trimResultFields(parsed) {
-  if (!parsed || typeof parsed !== "object") {
-    return parsed;
-  }
-
-  if (parsed.author) parsed.author = String(parsed.author).trim();
-  if (parsed.title) parsed.title = String(parsed.title).trim();
-  if (parsed.subtitle) parsed.subtitle = String(parsed.subtitle).trim();
-  if (parsed.category) parsed.category = String(parsed.category).trim();
-  if (parsed.hook) parsed.hook = String(parsed.hook).trim().slice(0, 80);
-
-  parsed.tone = normalizeToneValue(parsed.tone || "premium");
-
-  return parsed;
-}
-
-function countWords(text) {
-  return normalizeTextForCompare(text)
-    .split(" ")
-    .filter(Boolean).length;
-}
-
-function startsWithVerb(text, language) {
-  const normalized = normalizeTextForCompare(text);
-  const firstWord = normalized.split(" ")[0] || "";
-
-  if (!firstWord) return false;
-
-  const polishVerbStarts = [
-    "zbuduj",
-    "odkryj",
-    "uzyskaj",
-    "stworz",
-    "stwórz",
-    "buduj",
-    "zacznij",
-    "przyciagnij",
-    "przyciągnij",
-    "zamien",
-    "zamień",
-    "zwieksz",
-    "zwiększ",
-    "osiagnij",
-    "osiągnij",
-    "zdobadz",
-    "zdobądź",
-    "pokonaj",
-    "wykorzystaj",
-    "zmien",
-    "zmień",
-    "przeksztalc",
-    "przekształć",
-    "zastosuj",
-    "tworz",
-    "twórz"
-  ];
-
-  const englishVerbStarts = [
-    "build",
-    "discover",
-    "gain",
-    "create",
-    "start",
-    "attract",
-    "turn",
-    "increase",
-    "achieve",
-    "win",
-    "use",
-    "master",
-    "transform",
-    "change",
-    "apply"
-  ];
-
-  if (language === "polish") {
-    return polishVerbStarts.includes(firstWord);
-  }
-
-  return englishVerbStarts.includes(firstWord);
-}
-
 function hasWeakHookStyle(hook, language) {
   const value = String(hook || "").trim();
   const normalized = normalizeTextForCompare(value);
@@ -238,6 +216,7 @@ function hasWeakHookStyle(hook, language) {
   if (countWords(value) > 6) return true;
   if (value.includes(",")) return true;
   if (startsWithVerb(value, language)) return true;
+  if (startsWithHowStyle(value, language)) return true;
 
   const badPhrasesPl = [
     "jak ",
@@ -313,7 +292,8 @@ function isGenericHook(hook, language) {
     "lojalnosc bez wysilku",
     "lojalność bez wysiłku",
     "zaufanie przyciaga klientow",
-    "zaufanie przyciąga klientów"
+    "zaufanie przyciąga klientów",
+    "przewaga konkurencyjna"
   ];
 
   const genericPatternsEn = [
@@ -326,7 +306,8 @@ function isGenericHook(hook, language) {
     "client with ease",
     "growth made easy",
     "business growth",
-    "trust in sales"
+    "trust in sales",
+    "competitive advantage"
   ];
 
   const patterns = language === "polish" ? genericPatternsPl : genericPatternsEn;
@@ -343,27 +324,14 @@ function isInstructionalSubtitle(subtitle, language) {
   const firstWord = normalized.split(" ")[0] || "";
 
   if (!firstWord) return true;
+  if (startsWithHowStyle(subtitle, language)) return true;
 
   const badStartsPl = [
-    "zastosuj",
-    "odkryj",
-    "uzyskaj",
-    "zbuduj",
-    "stworz",
-    "stwórz",
-    "poznaj",
-    "naucz",
-    "dowiedz"
+    "zastosuj", "odkryj", "uzyskaj", "zbuduj", "stworz", "stwórz", "poznaj", "naucz", "dowiedz", "jak"
   ];
 
   const badStartsEn = [
-    "apply",
-    "discover",
-    "gain",
-    "build",
-    "create",
-    "learn",
-    "understand"
+    "apply", "discover", "gain", "build", "create", "learn", "understand", "how"
   ];
 
   return language === "polish"
@@ -409,6 +377,39 @@ function isGenericSubtitle(subtitle, language) {
   return false;
 }
 
+function isGenericTitle(title, language) {
+  const normalized = normalizeTextForCompare(title);
+
+  if (!normalized) return true;
+
+  const badPl = [
+    "zaufanie w sprzedazy",
+    "zaufanie w sprzedaży",
+    "sprzedaz oparta na zaufaniu",
+    "sprzedaż oparta na zaufaniu",
+    "system sprzedazy",
+    "system sprzedaży",
+    "metoda sprzedazy",
+    "metoda sprzedaży",
+    "pozyskiwanie klientow",
+    "pozyskiwanie klientów",
+    "biznes i sprzedaz",
+    "biznes i sprzedaż"
+  ];
+
+  const badEn = [
+    "trust in sales",
+    "sales system",
+    "sales method",
+    "client acquisition",
+    "business and sales"
+  ];
+
+  const bad = language === "polish" ? badPl : badEn;
+
+  return bad.includes(normalized);
+}
+
 function scoreHookQuality(hook, language) {
   const value = String(hook || "").trim();
   const normalized = normalizeTextForCompare(value);
@@ -418,10 +419,12 @@ function scoreHookQuality(hook, language) {
   let score = 100;
   const words = countWords(value);
 
-  if (words > 6) score -= 40;
-  if (words > 4) score -= 10;
+  if (words > 6) score -= 45;
+  if (words > 4) score -= 20;
+  if (words < 2) score -= 10;
   if (value.includes(",")) score -= 25;
-  if (startsWithVerb(value, language)) score -= 30;
+  if (startsWithVerb(value, language)) score -= 35;
+  if (startsWithHowStyle(value, language)) score -= 35;
   if (isGenericHook(value, language)) score -= 35;
 
   const genericWordsPl = [
@@ -453,8 +456,8 @@ function scoreHookQuality(hook, language) {
     "zaufania",
     "autorytetu",
     "konwersji",
-    "pozycje",
-    "pozycję"
+    "pozycję",
+    "pozycje"
   ];
 
   const contrastWordsEn = [
@@ -486,8 +489,8 @@ function scoreHookQuality(hook, language) {
   if (contrastHits >= 1) score += 10;
   if (words >= 2 && words <= 4) score += 5;
 
-  const bannedStartsPl = ["uzyskaj", "zbuduj", "odkryj", "stwórz", "stworz", "zmień", "zmien"];
-  const bannedStartsEn = ["build", "discover", "gain", "create", "change"];
+  const bannedStartsPl = ["uzyskaj", "zbuduj", "odkryj", "stwórz", "stworz", "zmień", "zmien", "jak"];
+  const bannedStartsEn = ["build", "discover", "gain", "create", "change", "how"];
   const firstWord = normalized.split(" ")[0] || "";
   const bannedStarts = language === "polish" ? bannedStartsPl : bannedStartsEn;
 
@@ -508,12 +511,12 @@ function scoreSubtitleQuality(subtitle, hook, language) {
   let score = 100;
   const words = countWords(value);
 
-  if (isInstructionalSubtitle(value, language)) score -= 25;
+  if (isInstructionalSubtitle(value, language)) score -= 30;
   if (isGenericSubtitle(value, language)) score -= 25;
   if (hasTooMuchOverlap(hook, value)) score -= 30;
   if (hasSemanticClash(hook, value)) score -= 30;
-  if (words > 28) score -= 15;
-  if (words < 8) score -= 10;
+  if (words > 28) score -= 20;
+  if (words < 8) score -= 12;
 
   const mechanismWordsPl = [
     "system",
@@ -527,7 +530,8 @@ function scoreSubtitleQuality(subtitle, hook, language) {
     "komunikac",
     "metod",
     "ram",
-    "model"
+    "model",
+    "architekt"
   ];
 
   const mechanismWordsEn = [
@@ -540,7 +544,8 @@ function scoreSubtitleQuality(subtitle, hook, language) {
     "communication",
     "path",
     "method",
-    "model"
+    "model",
+    "architecture"
   ];
 
   const mechanismWords = language === "polish" ? mechanismWordsPl : mechanismWordsEn;
@@ -552,6 +557,10 @@ function scoreSubtitleQuality(subtitle, hook, language) {
 
   if (mechanismHits >= 1) score += 10;
   if (mechanismHits >= 2) score += 10;
+
+  if (startsWithHowStyle(value, language)) {
+    score -= 20;
+  }
 
   if (score < 0) score = 0;
   if (score > 100) score = 100;
@@ -597,9 +606,10 @@ function scoreTitleQuality(title, language) {
   let score = 100;
   const words = countWords(value);
 
-  if (words > 4) score -= 25;
-  if (words === 1) score -= 10;
-  if (words > 5) score -= 15;
+  if (words > 4) score -= 30;
+  if (words === 1) score -= 12;
+  if (words > 5) score -= 20;
+  if (isGenericTitle(value, language)) score -= 40;
 
   const genericWordsPl = [
     "system",
@@ -643,7 +653,9 @@ function scoreTitleQuality(title, language) {
     "pętla",
     "architektura",
     "magnes",
-    "silnik"
+    "silnik",
+    "matryca",
+    "schemat"
   ];
 
   const strongPatternsEn = [
@@ -653,7 +665,8 @@ function scoreTitleQuality(title, language) {
     "switch",
     "magnet",
     "architecture",
-    "mechanism"
+    "mechanism",
+    "matrix"
   ];
 
   const abstractPatternsPl = [
@@ -696,14 +709,14 @@ function scoreTitleQuality(title, language) {
     if (normalized.includes(pattern)) strongHits++;
   }
 
-  if (strongHits >= 1) score += 10;
+  if (strongHits >= 1) score += 12;
 
   let abstractHits = 0;
   for (const pattern of abstractPatterns) {
     if (normalized.includes(pattern)) abstractHits++;
   }
 
-  if (abstractHits >= 1) score -= 10;
+  if (abstractHits >= 1) score -= 15;
 
   if (score < 0) score = 0;
   if (score > 100) score = 100;
@@ -725,11 +738,11 @@ function analyzeTitleQuality(title, language) {
     issues.push("too_long");
   }
 
-  if (language === "polish") {
-    if (normalized.includes("system") && normalized.includes("sprzed")) {
-      issues.push("too_generic");
-    }
+  if (isGenericTitle(value, language)) {
+    issues.push("too_generic");
+  }
 
+  if (language === "polish") {
     if (
       normalized.includes("zaufany") ||
       normalized.includes("konwersyjny") ||
@@ -748,8 +761,8 @@ function analyzeTitleQuality(title, language) {
       issues.push("too_abstract");
     }
   } else {
-    if (normalized.includes("system") && normalized.includes("sales")) {
-      issues.push("too_generic");
+    if (normalized.includes("power") || normalized.includes("success")) {
+      issues.push("too_abstract");
     }
   }
 
@@ -768,18 +781,18 @@ function qualityGate({ positioning, language }) {
   const titleIssues = analyzeTitleQuality(title, language);
 
   const overall = Math.round(
-    (hookScore * 0.28) +
-    (subtitleScore * 0.28) +
-    (consistencyScore * 0.22) +
+    (hookScore * 0.30) +
+    (subtitleScore * 0.27) +
+    (consistencyScore * 0.21) +
     (titleScore * 0.22)
   );
 
   const notes = [];
   const flags = {
-    needsHookRepair: hookScore < 70,
-    needsSubtitleRepair: subtitleScore < 70,
-    needsConsistencyRepair: consistencyScore < 60,
-    needsTitleRepair: titleScore < 70,
+    needsHookRepair: hookScore < 78,
+    needsSubtitleRepair: subtitleScore < 76,
+    needsConsistencyRepair: consistencyScore < 70,
+    needsTitleRepair: titleScore < 78,
     needsTitleReview: false
   };
 
@@ -829,11 +842,13 @@ function qualityGate({ positioning, language }) {
   }
 
   const passed =
-    hookScore >= 70 &&
-    subtitleScore >= 70 &&
-    consistencyScore >= 60 &&
-    titleScore >= 70 &&
-    !flags.needsTitleReview;
+    hookScore >= 78 &&
+    subtitleScore >= 76 &&
+    consistencyScore >= 70 &&
+    titleScore >= 78 &&
+    !flags.needsTitleReview &&
+    !notes.includes("hook sounds generic") &&
+    !notes.includes("title sounds too generic");
 
   return {
     passed,
@@ -952,6 +967,16 @@ function createSessionId() {
   return `session_${crypto.randomBytes(8).toString("hex")}`;
 }
 
+function createInputHash({ linkedinInput = "", authorContext = "", sourceText = "" }) {
+  const raw = JSON.stringify({
+    linkedinInput: String(linkedinInput || ""),
+    authorContext: String(authorContext || ""),
+    sourceText: String(sourceText || "")
+  });
+
+  return crypto.createHash("sha256").update(raw).digest("hex").slice(0, 24);
+}
+
 function getVariantStrategies(language) {
   if (language === "polish") {
     return [
@@ -962,7 +987,7 @@ function getVariantStrategies(language) {
 Twórz wersję bardziej premium i strategiczną.
 Akcent: autorytet, pozycja, zaufanie, jakość relacji, przewaga ekspercka.
 Tytuł ma brzmieć dojrzale, elegancko i silnie.
-Hook ma sugerować pozycję, nie дешёвое обещание.
+Hook ma sugerować pozycję, nie tanią obietnicę.
 `
       },
       {
@@ -1062,16 +1087,6 @@ The hook should show strategic advantage.
   ];
 }
 
-function createInputHash({ linkedinInput = "", authorContext = "", sourceText = "" }) {
-  const raw = JSON.stringify({
-    linkedinInput: String(linkedinInput || ""),
-    authorContext: String(authorContext || ""),
-    sourceText: String(sourceText || "")
-  });
-
-  return crypto.createHash("sha256").update(raw).digest("hex").slice(0, 24);
-}
-
 function getVariantByIdFromSession(sessionId, variantId) {
   const session = variantSessionsStore.get(String(sessionId || "").trim());
 
@@ -1125,7 +1140,7 @@ async function repairHookIfNeeded(parsed, detectedLanguage) {
       isGenericHook(parsed.hook, detectedLanguage) ||
       hasTooMuchOverlap(parsed.hook, parsed.subtitle) ||
       hasSemanticClash(parsed.hook, parsed.subtitle) ||
-      hookScore < 75
+      hookScore < 82
     );
 
   if (!needsHookRepair) {
@@ -1167,6 +1182,29 @@ STRICT RULES:
 - no multiple ideas
 - no instruction style
 - no "how to" style
+- avoid generic phrases like:
+  "Zaufanie w sprzedaży"
+  "Przewaga konkurencyjna"
+  "Trust in sales"
+  "Competitive advantage"
+
+BAD:
+"Uzyskaj stabilny dochód z wiedzy"
+"Zbuduj trwałe relacje"
+"Odkryj system sprzedaży"
+"Klient na wyciągnięcie ręki"
+"Klient bez wysiłku"
+"Więcej klientów"
+"Lepsza sprzedaż"
+"Zaufanie jako przewaga konkurencyjna"
+
+GOOD:
+"Dochód z wiedzy"
+"Sprzedaż bez presji"
+"Klient bez pościgu"
+"Zaufanie zamiast presji"
+"Autorytet zamiast pogoni"
+"Sprzedaż przez pozycję"
 `;
 
   const hookRepairUserPrompt = `
@@ -1182,14 +1220,8 @@ Rewrite the hook now.
 
   const { response: hookRepairResponse, data: hookRepairData } = await callOpenAI(
     [
-      {
-        role: "system",
-        content: hookRepairSystemPrompt
-      },
-      {
-        role: "user",
-        content: hookRepairUserPrompt
-      }
+      { role: "system", content: hookRepairSystemPrompt },
+      { role: "user", content: hookRepairUserPrompt }
     ],
     0.65
   );
@@ -1218,10 +1250,11 @@ async function repairSubtitleIfNeeded(parsed, detectedLanguage) {
     parsed.hook &&
     parsed.subtitle &&
     (
-      subtitleScore < 70 ||
-      consistencyScore < 60 ||
+      subtitleScore < 78 ||
+      consistencyScore < 70 ||
       hasTooMuchOverlap(parsed.hook, parsed.subtitle) ||
-      hasSemanticClash(parsed.hook, parsed.subtitle)
+      hasSemanticClash(parsed.hook, parsed.subtitle) ||
+      startsWithHowStyle(parsed.subtitle, detectedLanguage)
     );
 
   if (!needsSubtitleRepair) {
@@ -1244,6 +1277,25 @@ Return ONLY this format:
 
 TASK:
 Rewrite ONLY the subtitle.
+
+GOAL:
+- the hook is the promise / result / headline
+- the subtitle must explain the mechanism, structure, path, implementation or operating logic
+- the subtitle must NOT repeat the same outcome framing as the hook
+- the subtitle must feel like how this actually works
+- the subtitle must sound like a premium workbook promise, not a blog sentence
+- avoid generic phrases like "sprawdzone strategie i narzędzia" unless truly necessary
+
+RULES:
+- keep the same overall product direction
+- keep the same language
+- do NOT repeat the same idea as the hook
+- do NOT reuse the same key words from the hook unless absolutely necessary
+- subtitle must add a different value layer: mechanism, structure, transformation, implementation
+- make it practical, clear and premium
+- good subtitle = workbook promise + method
+- avoid making subtitle a second hook
+- avoid starting with "Jak" / "How"
 `;
 
   const repairUserPrompt = `
@@ -1260,14 +1312,8 @@ Make the subtitle more about mechanism, structure, implementation or process.
 
   const { response: repairResponse, data: repairData } = await callOpenAI(
     [
-      {
-        role: "system",
-        content: repairSystemPrompt
-      },
-      {
-        role: "user",
-        content: repairUserPrompt
-      }
+      { role: "system", content: repairSystemPrompt },
+      { role: "user", content: repairUserPrompt }
     ],
     0.7
   );
@@ -1293,7 +1339,7 @@ async function repairTitleIfNeeded(parsed, detectedLanguage) {
   const needsTitleRepair =
     parsed.title &&
     (
-      titleScore < 70 ||
+      titleScore < 82 ||
       titleIssues.includes("too_generic") ||
       titleIssues.includes("unnatural_polish")
     );
@@ -1318,6 +1364,33 @@ Return ONLY this format:
 
 TASK:
 Rewrite ONLY the title.
+
+GOAL:
+- title must feel like a premium product name
+- title must be natural in the target language
+- title must NOT sound translated from English
+- title must be 2-4 words
+- title must feel branded, memorable and commercially strong
+- avoid generic structures
+- avoid overusing words like system, method, process
+- avoid generic thematic titles like:
+  "Zaufanie w Sprzedaży"
+  "Trust in Sales"
+
+FOR POLISH:
+- prefer noun-based constructions like:
+  "Kod Zaufania"
+  "Mechanizm Zaufania"
+  "Pętla Autorytetu"
+  "Magnes Klienta"
+  "Silnik Zaufania"
+- avoid unnatural constructions like:
+  "Zaufany Magnet"
+  "Konwersyjny Klient"
+
+STRICT:
+- JSON only
+- no extra keys
 `;
 
   const titleRepairUserPrompt = `
@@ -1332,14 +1405,8 @@ Rewrite the title now.
 
   const { response: titleRepairResponse, data: titleRepairData } = await callOpenAI(
     [
-      {
-        role: "system",
-        content: titleRepairSystemPrompt
-      },
-      {
-        role: "user",
-        content: titleRepairUserPrompt
-      }
+      { role: "system", content: titleRepairSystemPrompt },
+      { role: "user", content: titleRepairUserPrompt }
     ],
     0.6
   );
@@ -1364,7 +1431,7 @@ Rewrite the title now.
   };
 }
 
-async function generatePositioning({
+async function generateRawPositioningOnce({
   combinedInput,
   detectedLanguage,
   variantAnglePrompt = "",
@@ -1395,18 +1462,166 @@ Return ONLY valid JSON in this exact format:
   "tone": "",
   "hook": ""
 }
+
+GENERAL RULES:
+- think like a premium product strategist, not like a generic copywriter
+- the output should feel sellable, distinctive and market-ready
+- avoid boring, generic, obvious phrasing
+
+AUTHOR:
+- extract full name if possible
+
+TITLE (CRITICAL):
+- must feel like a branded product, framework, mechanism or named method
+- must NOT sound generic
+- must NOT sound like a textbook category
+- avoid titles built from obvious descriptors like:
+  "Trust-Based Sales System"
+  "Relationship Sales Method"
+  "Client Acquisition Process"
+  "Sprzedaż oparta na zaufaniu"
+  "System sprzedaży relacyjnej"
+- avoid overused structural words as the main form:
+  system, method, process, framework, blueprint, guide
+- these words can inspire the idea, but should NOT dominate the title
+- title should feel distinctive, memorable and commercially strong
+- 2-4 words max
+- keep it natural in the source language
+- MUST sound natural in the target language
+- avoid direct translation structures from English
+- in Polish, prefer noun-based constructions like:
+  "Magnes Zaufania"
+  "Kod Konwersji"
+  "Pętla Autorytetu"
+- avoid unnatural Polish title forms like:
+  "Zaufany Magnet"
+  "Konwersyjny Klient"
+
+BAD ENGLISH:
+"Trust-Based Sales System"
+"Client Conversion System"
+"Sales Method"
+"Business Process"
+"Trust in Sales"
+
+GOOD ENGLISH:
+"The Trust Engine"
+"The Authority Loop"
+"The Conversion Code"
+"The Client Magnet"
+"The Referral Switch"
+
+BAD POLISH:
+"System zaufania w sprzedaży"
+"Sprzedaż oparta na relacjach"
+"Metoda pozyskiwania klientów"
+"Zaufany Magnet"
+"Zaufanie w Sprzedaży"
+
+GOOD POLISH:
+"Silnik Zaufania"
+"Pętla Autorytetu"
+"Kod Konwersji"
+"Magnes Zaufania"
+"Magnes Klienta"
+"Mechanizm Poleceń"
+
+SUBTITLE:
+- must describe transformation + result
+- practical, execution-based
+- should feel like a workbook promise
+- should explain what the user achieves
+- can be longer than the title
+- must feel specific, not vague
+- avoid sounding like an academic description
+- keep it natural in the source language
+- avoid starting with "Jak" / "How"
+
+HOOK (CRITICAL):
+- MAX 6 words (hard limit)
+- prefer 2-4 words
+- must be extremely short
+- keep it natural in the source language
+
+FORMAT (VERY IMPORTANT):
+- must feel like a PRODUCT TAGLINE or CATEGORY LABEL
+- NOT a sentence
+- NOT an instruction
+- NOT "how to"
+- NOT generic phrasing like "competitive advantage"
+
+STRICT RULES:
+- NO verbs at the beginning
+- NO commas
+- NO multiple ideas
+- NO full sentences
+- must express a DISTINCT ANGLE or viewpoint
+- must NOT sound generic or like a common slogan
+- prefer contrast, tension or unexpected phrasing
+
+BAD:
+"Uzyskaj stabilny dochód z wiedzy"
+"Zbuduj trwałe relacje"
+"Odkryj system sprzedaży"
+"Build clients without chasing"
+"How to build trust"
+"Klient na wyciągnięcie ręki"
+"Klient bez wysiłku"
+"Zaufanie jako przewaga konkurencyjna"
+
+GOOD:
+"Dochód z wiedzy"
+"Klient bez pościgu"
+"Zaufanie zamiast presji"
+"Autorytet zamiast pogoni"
+"Sprzedaż przez pozycję"
+
+STRUCTURE:
+- 1 idea
+- 1 angle
+- high clarity
+
+HOOK vs SUBTITLE:
+- hook and subtitle must NOT repeat the same idea
+- each line must introduce a different value layer
+- hook should be a short sharp angle, claim or tagline
+- subtitle should expand the offer with practical transformation and mechanism
+- subtitle should explain HOW the promise becomes real
+- if hook is about result, subtitle must focus on structure, system, process, path or implementation
+- avoid repeating the same phrase, same framing or same benefit in both lines
+
+CATEGORY:
+- broad market category
+- keep it natural in the source language
+- prefer single clear category, not combined category if avoidable
+- examples:
+  Business
+  Sales
+  Marketing
+  Personal Development
+  Biznes
+  Sprzedaż
+  Marketing
+  Rozwój osobisty
+
+TONE:
+- choose exactly one of:
+  premium
+  classic
+  modern
+  bold
+
+STRICT:
+- return JSON only
+- no markdown
+- no explanation
+- no extra keys
 `;
 
   const { response, data } = await callOpenAI(
     [
-      {
-        role: "system",
-        content: mainSystemPrompt
-      },
-      {
-        role: "user",
-        content: combinedInput
-      }
+      { role: "system", content: mainSystemPrompt },
+      { role: "user", content: combinedInput }
     ],
     0.9
   );
@@ -1446,6 +1661,15 @@ Return ONLY valid JSON in this exact format:
 
   trimResultFields(parsed);
 
+  return {
+    ok: true,
+    parsed
+  };
+}
+
+async function finalizePositioningCandidate(parsed, detectedLanguage) {
+  trimResultFields(parsed);
+
   const titleRepaired = await repairTitleIfNeeded(parsed, detectedLanguage);
   trimResultFields(titleRepaired.parsed);
 
@@ -1464,11 +1688,109 @@ Return ONLY valid JSON in this exact format:
   });
 
   return {
+    positioning: subtitleRepaired,
+    quality,
+    hookScore: quality.scores.hook
+  };
+}
+
+function compareCandidates(a, b) {
+  if (!a) return b;
+  if (!b) return a;
+
+  if (a.quality?.passed && !b.quality?.passed) return a;
+  if (!a.quality?.passed && b.quality?.passed) return b;
+
+  const aOverall = a.quality?.scores?.overall ?? 0;
+  const bOverall = b.quality?.scores?.overall ?? 0;
+
+  if (aOverall !== bOverall) {
+    return aOverall > bOverall ? a : b;
+  }
+
+  const aTitle = a.quality?.scores?.title ?? 0;
+  const bTitle = b.quality?.scores?.title ?? 0;
+  if (aTitle !== bTitle) {
+    return aTitle > bTitle ? a : b;
+  }
+
+  const aHook = a.quality?.scores?.hook ?? 0;
+  const bHook = b.quality?.scores?.hook ?? 0;
+  if (aHook !== bHook) {
+    return aHook > bHook ? a : b;
+  }
+
+  return a;
+}
+
+async function generatePositioning({
+  combinedInput,
+  detectedLanguage,
+  variantAnglePrompt = "",
+  variantLabel = ""
+}) {
+  const attempts = [];
+  let bestCandidate = null;
+  const maxAttempts = 3;
+
+  for (let i = 0; i < maxAttempts; i += 1) {
+    const rawResult = await generateRawPositioningOnce({
+      combinedInput,
+      detectedLanguage,
+      variantAnglePrompt,
+      variantLabel
+    });
+
+    if (!rawResult.ok) {
+      if (i === maxAttempts - 1 && !bestCandidate) {
+        return rawResult;
+      }
+      continue;
+    }
+
+    const finalized = await finalizePositioningCandidate(
+      rawResult.parsed,
+      detectedLanguage
+    );
+
+    const candidate = {
+      attempt: i + 1,
+      result: finalized.positioning,
+      quality: finalized.quality,
+      hookScore: finalized.hookScore
+    };
+
+    attempts.push(candidate);
+    bestCandidate = compareCandidates(bestCandidate, candidate);
+
+    if (
+      candidate.quality?.passed &&
+      candidate.quality?.scores?.overall >= 88 &&
+      !candidate.quality?.notes?.includes("hook sounds generic") &&
+      !candidate.quality?.notes?.includes("title sounds too generic")
+    ) {
+      bestCandidate = candidate;
+      break;
+    }
+  }
+
+  if (!bestCandidate) {
+    return {
+      ok: false,
+      status: 500,
+      error: "Unable to generate positioning"
+    };
+  }
+
+  return {
     ok: true,
     language: detectedLanguage,
-    hookScore: quality.scores.hook,
-    quality,
-    result: subtitleRepaired
+    hookScore: bestCandidate.hookScore,
+    quality: {
+      ...bestCandidate.quality,
+      attemptsTried: attempts.length
+    },
+    result: bestCandidate.result
   };
 }
 
@@ -1499,6 +1821,20 @@ Zwróć WYŁĄCZNIE poprawny JSON w tym formacie:
     }
   ]
 }
+
+ZASADY:
+- odpowiadaj po polsku
+- ma to być workbook, nie książka akademicka
+- rozdziały mają prowadzić czytelnika krok po kroku
+- chapter count: ${chapterCount}
+- chapter titles mają brzmieć praktycznie i produktowo
+- goal ma opisywać cel rozdziału
+- exercise ma być krótkim, konkretnym ćwiczeniem workbookowym
+- promise = główna obietnica workbooka
+- reader = dla kogo dokładnie jest ten workbook
+- transformation = od czego do czego prowadzi
+- bez markdown
+- bez komentarzy
 `
       : `
 You are a premium educational product strategist.
@@ -1519,6 +1855,20 @@ Return ONLY valid JSON in this format:
     }
   ]
 }
+
+RULES:
+- respond in English
+- this should be a workbook, not an academic book
+- chapters should lead the reader step by step
+- chapter count: ${chapterCount}
+- chapter titles should sound practical and product-like
+- goal should describe the chapter objective
+- exercise should be a short concrete workbook exercise
+- promise = main workbook promise
+- reader = who this workbook is for
+- transformation = what change it creates
+- no markdown
+- no comments
 `;
 
   const userPrompt = `
@@ -1531,14 +1881,8 @@ ${combinedInput}
 
   const { response, data } = await callOpenAI(
     [
-      {
-        role: "system",
-        content: systemPrompt
-      },
-      {
-        role: "user",
-        content: userPrompt
-      }
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
     ],
     0.75
   );
@@ -1605,6 +1949,16 @@ Zwróć WYŁĄCZNIE poprawny JSON w tym formacie:
   "exerciseText": "",
   "reflectionPrompt": ""
 }
+
+ZASADY:
+- odpowiadaj po polsku
+- intro ma być krótkim, mocnym początkiem rozdziału
+- styl ma być praktyczny, konkretny, wdrożeniowy
+- exerciseTitle ma być krótkim tytułem ćwiczenia
+- exerciseText ma zawierać konkretne polecenie
+- reflectionPrompt ma być jednym pytaniem refleksyjnym
+- nie pisz eseju
+- nie używaj markdown
 `
       : `
 You are a premium workbook strategist.
@@ -1619,6 +1973,16 @@ Return ONLY valid JSON in this format:
   "exerciseText": "",
   "reflectionPrompt": ""
 }
+
+RULES:
+- respond in English
+- intro should be a short strong chapter opening
+- style should be practical, concrete and implementation-focused
+- exerciseTitle should be short
+- exerciseText should contain a concrete instruction
+- reflectionPrompt should be a single reflection question
+- do not write an essay
+- no markdown
 `;
 
   const userPrompt = `
@@ -1637,14 +2001,8 @@ ${combinedInput}
 
   const { response, data } = await callOpenAI(
     [
-      {
-        role: "system",
-        content: systemPrompt
-      },
-      {
-        role: "user",
-        content: userPrompt
-      }
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
     ],
     0.75
   );
@@ -2034,14 +2392,7 @@ router.post("/generate-preview", async (req, res) => {
     options = {}
   } = req.body || {};
 
-  if (
-    !linkedinInput &&
-    !authorContext &&
-    !sourceText &&
-    !positioning &&
-    !selectedVariant &&
-    !sessionId
-  ) {
+  if (!linkedinInput && !authorContext && !sourceText && !positioning && !selectedVariant && !sessionId) {
     return res.status(400).json({
       ok: false,
       error: "No input"
