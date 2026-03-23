@@ -4,6 +4,7 @@ import crypto from "crypto";
 const router = express.Router();
 
 const selectedVariantsStore = new Map();
+const variantSessionsStore = new Map();
 
 function safeParseJSON(text) {
   try {
@@ -308,7 +309,11 @@ function isGenericHook(hook, language) {
     "sprzedaz bez stresu",
     "sprzedaż bez stresu",
     "zaufanie w sprzedazy",
-    "zaufanie w sprzedaży"
+    "zaufanie w sprzedaży",
+    "lojalnosc bez wysilku",
+    "lojalność bez wysiłku",
+    "zaufanie przyciaga klientow",
+    "zaufanie przyciąga klientów"
   ];
 
   const genericPatternsEn = [
@@ -1055,6 +1060,40 @@ The hook should show strategic advantage.
 `
     }
   ];
+}
+
+function createInputHash({ linkedinInput = "", authorContext = "", sourceText = "" }) {
+  const raw = JSON.stringify({
+    linkedinInput: String(linkedinInput || ""),
+    authorContext: String(authorContext || ""),
+    sourceText: String(sourceText || "")
+  });
+
+  return crypto.createHash("sha256").update(raw).digest("hex").slice(0, 24);
+}
+
+function getVariantByIdFromSession(sessionId, variantId) {
+  const session = variantSessionsStore.get(String(sessionId || "").trim());
+
+  if (!session || !Array.isArray(session.variants)) {
+    return null;
+  }
+
+  return session.variants.find((item) => item.id === String(variantId || "").trim()) || null;
+}
+
+function buildSelectedPayloadFromVariant(variant, sessionId = null) {
+  return {
+    id: variant.id || createVariantId(),
+    strategyKey: variant.strategyKey || "manual",
+    strategyLabel: variant.strategyLabel || "Selected",
+    createdAt: variant.createdAt || new Date().toISOString(),
+    hookScore: variant.hookScore ?? null,
+    quality: variant.quality || null,
+    positioning: trimResultFields({ ...(variant.positioning || {}) }),
+    cover: variant.cover || buildCoverPayload(variant.positioning || {}),
+    sessionId: sessionId || null
+  };
 }
 
 async function callOpenAI(messages, temperature = 0.85) {
@@ -1977,6 +2016,40 @@ router.get("/author/analyze", (_req, res) => {
   });
 });
 
+router.get("/variants/session/:sessionId", (req, res) => {
+  const sessionId = String(req.params.sessionId || "").trim();
+
+  if (!sessionId) {
+    return res.status(400).json({
+      ok: false,
+      error: "Missing sessionId"
+    });
+  }
+
+  const session = variantSessionsStore.get(sessionId);
+
+  if (!session) {
+    return res.status(404).json({
+      ok: false,
+      error: "Variant session not found"
+    });
+  }
+
+  const selectedVariant =
+    session.selectedVariantId
+      ? session.variants.find((item) => item.id === session.selectedVariantId) || null
+      : null;
+
+  return res.status(200).json({
+    ok: true,
+    sessionId,
+    session: {
+      ...session,
+      selectedVariant
+    }
+  });
+});
+
 router.get("/variants/selected/:sessionId", (req, res) => {
   const sessionId = String(req.params.sessionId || "").trim();
 
@@ -1985,6 +2058,23 @@ router.get("/variants/selected/:sessionId", (req, res) => {
       ok: false,
       error: "Missing sessionId"
     });
+  }
+
+  const session = variantSessionsStore.get(sessionId);
+
+  if (session?.selectedVariantId) {
+    const selectedFromSession =
+      session.variants.find((item) => item.id === session.selectedVariantId) || null;
+
+    if (selectedFromSession) {
+      const payload = buildSelectedPayloadFromVariant(selectedFromSession, sessionId);
+
+      return res.status(200).json({
+        ok: true,
+        sessionId,
+        selected: payload
+      });
+    }
   }
 
   const selected = selectedVariantsStore.get(sessionId);
@@ -2068,7 +2158,12 @@ router.post("/generate-variants", async (req, res) => {
     : detectLanguage(combinedInput);
 
   const variantCount = clampVariantCount(options.variantCount || 3);
-  const sessionId = String(options.sessionId || createSessionId());
+  const sessionId = String(options.sessionId || createSessionId()).trim();
+  const inputHash = createInputHash({
+    linkedinInput,
+    authorContext,
+    sourceText
+  });
 
   try {
     const variantsResult = await generateVariants({
@@ -2080,6 +2175,16 @@ router.post("/generate-variants", async (req, res) => {
     if (!variantsResult.ok) {
       return res.status(variantsResult.status || 500).json(variantsResult);
     }
+
+    variantSessionsStore.set(sessionId, {
+      sessionId,
+      createdAt: new Date().toISOString(),
+      language: detectedLanguage,
+      inputHash,
+      variantCount,
+      variants: variantsResult.variants,
+      selectedVariantId: null
+    });
 
     return res.status(200).json({
       ok: true,
@@ -2114,23 +2219,53 @@ router.post("/variants/select", async (req, res) => {
   let payloadToSave = null;
 
   if (variant && typeof variant === "object") {
-    payloadToSave = {
-      id: variant.id || variantId || createVariantId(),
-      strategyKey: variant.strategyKey || "manual",
-      strategyLabel: variant.strategyLabel || "Selected",
-      createdAt: variant.createdAt || new Date().toISOString(),
-      hookScore: variant.hookScore ?? null,
-      quality: variant.quality || null,
-      positioning: trimResultFields({ ...(variant.positioning || {}) }),
-      cover: variant.cover || buildCoverPayload(variant.positioning || {})
-    };
+    payloadToSave = buildSelectedPayloadFromVariant(variant, safeSessionId);
+
+    const existingSession = variantSessionsStore.get(safeSessionId);
+
+    if (existingSession) {
+      const existingIndex = existingSession.variants.findIndex((item) => item.id === payloadToSave.id);
+
+      if (existingIndex >= 0) {
+        existingSession.variants[existingIndex] = {
+          ...existingSession.variants[existingIndex],
+          ...variant,
+          positioning: trimResultFields({ ...(variant.positioning || existingSession.variants[existingIndex].positioning || {}) }),
+          cover: variant.cover || buildCoverPayload(variant.positioning || existingSession.variants[existingIndex].positioning || {})
+        };
+      } else {
+        existingSession.variants.push({
+          id: payloadToSave.id,
+          strategyKey: payloadToSave.strategyKey,
+          strategyLabel: payloadToSave.strategyLabel,
+          createdAt: payloadToSave.createdAt,
+          hookScore: payloadToSave.hookScore,
+          quality: payloadToSave.quality,
+          positioning: payloadToSave.positioning,
+          cover: payloadToSave.cover
+        });
+      }
+
+      existingSession.selectedVariantId = payloadToSave.id;
+      variantSessionsStore.set(safeSessionId, existingSession);
+    }
   } else {
-    payloadToSave = {
-      id: String(variantId),
-      strategyKey: "selected_by_id",
-      strategyLabel: "Selected by ID",
-      createdAt: new Date().toISOString()
-    };
+    const foundVariant = getVariantByIdFromSession(safeSessionId, variantId);
+
+    if (!foundVariant) {
+      return res.status(404).json({
+        ok: false,
+        error: "Variant not found in session. Send full variant object or valid sessionId + variantId."
+      });
+    }
+
+    payloadToSave = buildSelectedPayloadFromVariant(foundVariant, safeSessionId);
+
+    const existingSession = variantSessionsStore.get(safeSessionId);
+    if (existingSession) {
+      existingSession.selectedVariantId = payloadToSave.id;
+      variantSessionsStore.set(safeSessionId, existingSession);
+    }
   }
 
   selectedVariantsStore.set(safeSessionId, payloadToSave);
@@ -2193,27 +2328,49 @@ router.post("/generate-preview", async (req, res) => {
         source: "selectedVariant",
         variantId: selectedVariant.id || null
       };
+    } else if (useSavedSelection && sessionId) {
+      const safeSessionId = String(sessionId).trim();
+      const session = variantSessionsStore.get(safeSessionId);
+
+      if (session?.selectedVariantId) {
+        const savedVariant =
+          session.variants.find((item) => item.id === session.selectedVariantId) || null;
+
+        if (!savedVariant?.positioning) {
+          return res.status(404).json({
+            ok: false,
+            error: "Saved selected variant not found inside this session"
+          });
+        }
+
+        finalPositioning = { ...savedVariant.positioning };
+        selectionMeta = {
+          source: "savedSelection",
+          variantId: savedVariant.id || null,
+          sessionId: safeSessionId
+        };
+      } else {
+        const selected = selectedVariantsStore.get(safeSessionId);
+
+        if (!selected?.positioning) {
+          return res.status(404).json({
+            ok: false,
+            error: "Saved selected variant not found for this sessionId"
+          });
+        }
+
+        finalPositioning = { ...selected.positioning };
+        selectionMeta = {
+          source: "savedSelectionLegacy",
+          variantId: selected.id || null,
+          sessionId: safeSessionId
+        };
+      }
     } else if (positioning) {
       finalPositioning = { ...positioning };
       selectionMeta = {
         source: "positioning",
         variantId: null
-      };
-    } else if (useSavedSelection && sessionId) {
-      const saved = selectedVariantsStore.get(String(sessionId).trim());
-
-      if (!saved?.positioning) {
-        return res.status(404).json({
-          ok: false,
-          error: "Saved selected variant not found for this sessionId"
-        });
-      }
-
-      finalPositioning = { ...saved.positioning };
-      selectionMeta = {
-        source: "savedSelection",
-        variantId: saved.id || null,
-        sessionId: String(sessionId).trim()
       };
     }
 
