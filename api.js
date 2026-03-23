@@ -47,64 +47,13 @@ function normalizeTextForCompare(text) {
 
 function getMeaningfulWords(text) {
   const stopwords = new Set([
-    "i",
-    "oraz",
-    "a",
-    "to",
-    "w",
-    "we",
-    "z",
-    "ze",
-    "na",
-    "do",
-    "od",
-    "po",
-    "bez",
-    "dla",
-    "jest",
-    "się",
-    "który",
-    "która",
-    "które",
-    "that",
-    "into",
-    "from",
-    "with",
-    "without",
-    "the",
-    "and",
-    "for",
-    "your",
-    "this",
-    "these",
-    "those",
-    "practical",
-    "praktyczny",
-    "workbook",
-    "guide",
-    "system",
-    "framework",
-    "mechanizm",
-    "metoda",
-    "przez",
-    "helps",
-    "help",
-    "using",
-    "oparty",
-    "oparta",
-    "oparte",
-    "bardzo",
-    "more",
-    "most",
-    "less",
-    "których",
-    "umożliwia",
-    "pozwala",
-    "pozwolą",
-    "dzieki",
-    "dzięki",
-    "wobec",
-    "oriented"
+    "i", "oraz", "a", "to", "w", "we", "z", "ze", "na", "do", "od", "po", "bez",
+    "dla", "jest", "się", "który", "która", "które", "that", "into", "from", "with",
+    "without", "the", "and", "for", "your", "this", "these", "those", "practical",
+    "praktyczny", "workbook", "guide", "system", "framework", "mechanizm", "metoda",
+    "przez", "helps", "help", "using", "oparty", "oparta", "oparte",
+    "bardzo", "more", "most", "less", "których", "umożliwia",
+    "pozwala", "pozwolą", "dzieki", "dzięki", "wobec", "oriented"
   ]);
 
   return normalizeTextForCompare(text)
@@ -537,15 +486,7 @@ function scoreHookQuality(hook, language) {
   if (contrastHits >= 1) score += 10;
   if (words >= 2 && words <= 4) score += 5;
 
-  const bannedStartsPl = [
-    "uzyskaj",
-    "zbuduj",
-    "odkryj",
-    "stwórz",
-    "stworz",
-    "zmień",
-    "zmien"
-  ];
+  const bannedStartsPl = ["uzyskaj", "zbuduj", "odkryj", "stwórz", "stworz", "zmień", "zmien"];
   const bannedStartsEn = ["build", "discover", "gain", "create", "change"];
   const firstWord = normalized.split(" ")[0] || "";
   const bannedStarts = language === "polish" ? bannedStartsPl : bannedStartsEn;
@@ -725,7 +666,12 @@ function scoreTitleQuality(title, language) {
     "rozwój"
   ];
 
-  const abstractPatternsEn = ["power", "success", "growth", "path"];
+  const abstractPatternsEn = [
+    "power",
+    "success",
+    "growth",
+    "path"
+  ];
 
   const genericWords = language === "polish" ? genericWordsPl : genericWordsEn;
   const strongPatterns = language === "polish" ? strongPatternsPl : strongPatternsEn;
@@ -823,9 +769,9 @@ function qualityGate({ positioning, language }) {
 
   const overall = Math.round(
     (hookScore * 0.28) +
-      (subtitleScore * 0.28) +
-      (consistencyScore * 0.22) +
-      (titleScore * 0.22)
+    (subtitleScore * 0.28) +
+    (consistencyScore * 0.22) +
+    (titleScore * 0.22)
   );
 
   const notes = [];
@@ -903,77 +849,28 @@ function qualityGate({ positioning, language }) {
   };
 }
 
-function createInputHash({ linkedinInput = "", authorContext = "", sourceText = "" }) {
-  const raw = JSON.stringify({
-    linkedinInput: String(linkedinInput || ""),
-    authorContext: String(authorContext || ""),
-    sourceText: String(sourceText || "")
-  });
+function mergeInputs({ linkedinInput = "", authorContext = "", sourceText = "" }) {
+  return `
+LINKEDIN / BIO:
+${linkedinInput || ""}
 
-  return crypto.createHash("sha256").update(raw).digest("hex").slice(0, 24);
-}
+BOOK DESCRIPTIONS / EXTRA CONTEXT:
+${authorContext || ""}
 
-function getVariantByIdFromSession(sessionId, variantId) {
-  const session = variantSessionsStore.get(String(sessionId || "").trim());
-
-  if (!session || !Array.isArray(session.variants)) {
-    return null;
-  }
-
-  return session.variants.find((item) => item.id === String(variantId || "").trim()) || null;
-}
-
-function buildSelectedPayloadFromVariant(variant, sessionId = null) {
-  return {
-    id: variant.id || createVariantId(),
-    strategyKey: variant.strategyKey || "manual",
-    strategyLabel: variant.strategyLabel || "Selected",
-    createdAt: variant.createdAt || new Date().toISOString(),
-    hookScore: variant.hookScore ?? null,
-    quality: variant.quality || null,
-    positioning: trimResultFields({ ...(variant.positioning || {}) }),
-    cover: variant.cover || buildCoverPayload(variant.positioning || {}),
-    sessionId: sessionId || null
-  };
-}
-
-function createVariantId() {
-  return `variant_${crypto.randomBytes(6).toString("hex")}`;
-}
-
-function createSessionId() {
-  return `session_${crypto.randomBytes(8).toString("hex")}`;
-}
-
-function clampChapterCount(value) {
-  const n = Number(value || 7);
-
-  if (!Number.isFinite(n)) return 7;
-  if (n < 5) return 5;
-  if (n > 12) return 12;
-
-  return Math.round(n);
-}
-
-function clampVariantCount(value) {
-  const n = Number(value || 3);
-
-  if (!Number.isFinite(n)) return 3;
-  if (n < 2) return 2;
-  if (n > 5) return 5;
-
-  return Math.round(n);
+SOURCE TEXT / LONGER MATERIAL:
+${sourceText || ""}
+`.trim();
 }
 
 function buildCoverPayload(positioning) {
   return {
     eyebrow: "WORKBOOK SYSTEM",
     seriesLabel: "AIBOOK WORKBOOK",
-    hook: positioning?.hook || "",
-    title: positioning?.title || "",
-    subtitle: positioning?.subtitle || "",
-    author: positioning?.author || "",
-    meta: `${positioning?.category || ""} • ${positioning?.tone || "premium"}`
+    hook: positioning.hook || "",
+    title: positioning.title || "",
+    subtitle: positioning.subtitle || "",
+    author: positioning.author || "",
+    meta: `${positioning.category || ""} • ${positioning.tone || "premium"}`
   };
 }
 
@@ -1027,6 +924,34 @@ function buildDecisionPaths(language) {
   ];
 }
 
+function clampChapterCount(value) {
+  const n = Number(value || 7);
+
+  if (!Number.isFinite(n)) return 7;
+  if (n < 5) return 5;
+  if (n > 12) return 12;
+
+  return Math.round(n);
+}
+
+function clampVariantCount(value) {
+  const n = Number(value || 3);
+
+  if (!Number.isFinite(n)) return 3;
+  if (n < 2) return 2;
+  if (n > 5) return 5;
+
+  return Math.round(n);
+}
+
+function createVariantId() {
+  return `variant_${crypto.randomBytes(6).toString("hex")}`;
+}
+
+function createSessionId() {
+  return `session_${crypto.randomBytes(8).toString("hex")}`;
+}
+
 function getVariantStrategies(language) {
   if (language === "polish") {
     return [
@@ -1037,7 +962,7 @@ function getVariantStrategies(language) {
 Twórz wersję bardziej premium i strategiczną.
 Akcent: autorytet, pozycja, zaufanie, jakość relacji, przewaga ekspercka.
 Tytuł ma brzmieć dojrzale, elegancko i silnie.
-Hook ma sugerować pozycję, nie tanią obietnicę.
+Hook ma sugerować pozycję, nie дешёвое обещание.
 `
       },
       {
@@ -1137,49 +1062,57 @@ The hook should show strategic advantage.
   ];
 }
 
+function createInputHash({ linkedinInput = "", authorContext = "", sourceText = "" }) {
+  const raw = JSON.stringify({
+    linkedinInput: String(linkedinInput || ""),
+    authorContext: String(authorContext || ""),
+    sourceText: String(sourceText || "")
+  });
+
+  return crypto.createHash("sha256").update(raw).digest("hex").slice(0, 24);
+}
+
+function getVariantByIdFromSession(sessionId, variantId) {
+  const session = variantSessionsStore.get(String(sessionId || "").trim());
+
+  if (!session || !Array.isArray(session.variants)) {
+    return null;
+  }
+
+  return session.variants.find((item) => item.id === String(variantId || "").trim()) || null;
+}
+
+function buildSelectedPayloadFromVariant(variant, sessionId = null) {
+  return {
+    id: variant.id || createVariantId(),
+    strategyKey: variant.strategyKey || "manual",
+    strategyLabel: variant.strategyLabel || "Selected",
+    createdAt: variant.createdAt || new Date().toISOString(),
+    hookScore: variant.hookScore ?? null,
+    quality: variant.quality || null,
+    positioning: trimResultFields({ ...(variant.positioning || {}) }),
+    cover: variant.cover || buildCoverPayload(variant.positioning || {}),
+    sessionId: sessionId || null
+  };
+}
+
 async function callOpenAI(messages, temperature = 0.85) {
-  if (!process.env.OPENAI_API_KEY) {
-    return {
-      response: { ok: false, status: 500 },
-      data: { error: "Missing OPENAI_API_KEY" }
-    };
-  }
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages,
+      temperature
+    })
+  });
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60000);
+  const data = await response.json();
 
-  try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages,
-        temperature
-      }),
-      signal: controller.signal
-    });
-
-    let data = null;
-
-    try {
-      data = await response.json();
-    } catch {
-      data = { error: "Invalid JSON response from OpenAI" };
-    }
-
-    return { response, data };
-  } catch (error) {
-    return {
-      response: { ok: false, status: 500 },
-      data: { error: error?.message || "OpenAI request failed" }
-    };
-  } finally {
-    clearTimeout(timeout);
-  }
+  return { response, data };
 }
 
 async function repairHookIfNeeded(parsed, detectedLanguage) {
@@ -1187,11 +1120,13 @@ async function repairHookIfNeeded(parsed, detectedLanguage) {
 
   const needsHookRepair =
     parsed.hook &&
-    (hasWeakHookStyle(parsed.hook, detectedLanguage) ||
+    (
+      hasWeakHookStyle(parsed.hook, detectedLanguage) ||
       isGenericHook(parsed.hook, detectedLanguage) ||
       hasTooMuchOverlap(parsed.hook, parsed.subtitle) ||
       hasSemanticClash(parsed.hook, parsed.subtitle) ||
-      hookScore < 75);
+      hookScore < 75
+    );
 
   if (!needsHookRepair) {
     return { parsed, hookScore };
@@ -1213,6 +1148,25 @@ Return ONLY this format:
 
 TASK:
 Rewrite ONLY the hook.
+
+GOAL:
+- hook must be very short
+- hook must feel like a product tagline or category label
+- hook must NOT be a sentence
+- hook must NOT start with a verb
+- hook must NOT repeat subtitle meaning
+- hook must add a new angle
+- hook must express a DISTINCT ANGLE or viewpoint
+- hook must NOT sound generic or like a common slogan
+- prefer contrast, tension or unexpected phrasing
+
+STRICT RULES:
+- max 6 words
+- prefer 2-4 words
+- no comma
+- no multiple ideas
+- no instruction style
+- no "how to" style
 `;
 
   const hookRepairUserPrompt = `
@@ -1222,17 +1176,25 @@ CURRENT HOOK: ${parsed.hook || ""}
 SUBTITLE: ${parsed.subtitle || ""}
 CATEGORY: ${parsed.category || ""}
 TONE: ${parsed.tone || "premium"}
+
+Rewrite the hook now.
 `;
 
   const { response: hookRepairResponse, data: hookRepairData } = await callOpenAI(
     [
-      { role: "system", content: hookRepairSystemPrompt },
-      { role: "user", content: hookRepairUserPrompt }
+      {
+        role: "system",
+        content: hookRepairSystemPrompt
+      },
+      {
+        role: "user",
+        content: hookRepairUserPrompt
+      }
     ],
     0.65
   );
 
-  const hookRepairText = hookRepairData?.choices?.[0]?.message?.content;
+  const hookRepairText = hookRepairData.choices?.[0]?.message?.content;
 
   if (hookRepairResponse.ok && hookRepairText) {
     const hookRepairCleaned = cleanModelText(hookRepairText);
@@ -1249,23 +1211,18 @@ TONE: ${parsed.tone || "premium"}
 }
 
 async function repairSubtitleIfNeeded(parsed, detectedLanguage) {
-  const subtitleScore = scoreSubtitleQuality(
-    parsed.subtitle,
-    parsed.hook,
-    detectedLanguage
-  );
-  const consistencyScore = scoreHookSubtitleConsistency(
-    parsed.hook,
-    parsed.subtitle
-  );
+  const subtitleScore = scoreSubtitleQuality(parsed.subtitle, parsed.hook, detectedLanguage);
+  const consistencyScore = scoreHookSubtitleConsistency(parsed.hook, parsed.subtitle);
 
   const needsSubtitleRepair =
     parsed.hook &&
     parsed.subtitle &&
-    (subtitleScore < 70 ||
+    (
+      subtitleScore < 70 ||
       consistencyScore < 60 ||
       hasTooMuchOverlap(parsed.hook, parsed.subtitle) ||
-      hasSemanticClash(parsed.hook, parsed.subtitle));
+      hasSemanticClash(parsed.hook, parsed.subtitle)
+    );
 
   if (!needsSubtitleRepair) {
     return parsed;
@@ -1296,17 +1253,26 @@ HOOK: ${parsed.hook || ""}
 CURRENT SUBTITLE: ${parsed.subtitle || ""}
 CATEGORY: ${parsed.category || ""}
 TONE: ${parsed.tone || "premium"}
+
+Rewrite the subtitle so it does not repeat the hook.
+Make the subtitle more about mechanism, structure, implementation or process.
 `;
 
   const { response: repairResponse, data: repairData } = await callOpenAI(
     [
-      { role: "system", content: repairSystemPrompt },
-      { role: "user", content: repairUserPrompt }
+      {
+        role: "system",
+        content: repairSystemPrompt
+      },
+      {
+        role: "user",
+        content: repairUserPrompt
+      }
     ],
     0.7
   );
 
-  const repairText = repairData?.choices?.[0]?.message?.content;
+  const repairText = repairData.choices?.[0]?.message?.content;
 
   if (repairResponse.ok && repairText) {
     const repairCleaned = cleanModelText(repairText);
@@ -1326,9 +1292,11 @@ async function repairTitleIfNeeded(parsed, detectedLanguage) {
 
   const needsTitleRepair =
     parsed.title &&
-    (titleScore < 70 ||
+    (
+      titleScore < 70 ||
       titleIssues.includes("too_generic") ||
-      titleIssues.includes("unnatural_polish"));
+      titleIssues.includes("unnatural_polish")
+    );
 
   if (!needsTitleRepair) {
     return { parsed, titleScore, titleIssues };
@@ -1358,17 +1326,25 @@ HOOK: ${parsed.hook || ""}
 SUBTITLE: ${parsed.subtitle || ""}
 CATEGORY: ${parsed.category || ""}
 TONE: ${parsed.tone || "premium"}
+
+Rewrite the title now.
 `;
 
   const { response: titleRepairResponse, data: titleRepairData } = await callOpenAI(
     [
-      { role: "system", content: titleRepairSystemPrompt },
-      { role: "user", content: titleRepairUserPrompt }
+      {
+        role: "system",
+        content: titleRepairSystemPrompt
+      },
+      {
+        role: "user",
+        content: titleRepairUserPrompt
+      }
     ],
     0.6
   );
 
-  const titleRepairText = titleRepairData?.choices?.[0]?.message?.content;
+  const titleRepairText = titleRepairData.choices?.[0]?.message?.content;
 
   if (titleRepairResponse.ok && titleRepairText) {
     const titleRepairCleaned = cleanModelText(titleRepairText);
@@ -1404,6 +1380,8 @@ IMPORTANT LANGUAGE RULE:
 - do NOT translate into another language
 - for this task, detected language is: ${detectedLanguage}
 
+Your job is to transform raw author context into a premium workbook-style product concept.
+
 VARIANT MODE:
 ${variantLabel ? `- current variant label: ${variantLabel}` : "- standard mode"}
 ${variantAnglePrompt || ""}
@@ -1421,8 +1399,14 @@ Return ONLY valid JSON in this exact format:
 
   const { response, data } = await callOpenAI(
     [
-      { role: "system", content: mainSystemPrompt },
-      { role: "user", content: combinedInput }
+      {
+        role: "system",
+        content: mainSystemPrompt
+      },
+      {
+        role: "user",
+        content: combinedInput
+      }
     ],
     0.9
   );
@@ -1430,13 +1414,13 @@ Return ONLY valid JSON in this exact format:
   if (!response.ok) {
     return {
       ok: false,
-      status: response.status || 500,
-      error: data?.error || "OpenAI API error",
+      status: response.status,
+      error: "OpenAI API error",
       openai: data
     };
   }
 
-  const text = data?.choices?.[0]?.message?.content;
+  const text = data.choices?.[0]?.message?.content;
 
   if (!text) {
     return {
@@ -1465,10 +1449,7 @@ Return ONLY valid JSON in this exact format:
   const titleRepaired = await repairTitleIfNeeded(parsed, detectedLanguage);
   trimResultFields(titleRepaired.parsed);
 
-  const hookRepaired = await repairHookIfNeeded(
-    titleRepaired.parsed,
-    detectedLanguage
-  );
+  const hookRepaired = await repairHookIfNeeded(titleRepaired.parsed, detectedLanguage);
   trimResultFields(hookRepaired.parsed);
 
   const subtitleRepaired = await repairSubtitleIfNeeded(
@@ -1518,12 +1499,6 @@ Zwróć WYŁĄCZNIE poprawny JSON w tym formacie:
     }
   ]
 }
-
-ZASADY:
-- odpowiadaj po polsku
-- chapter count: ${chapterCount}
-- bez markdown
-- bez komentarzy
 `
       : `
 You are a premium educational product strategist.
@@ -1544,12 +1519,6 @@ Return ONLY valid JSON in this format:
     }
   ]
 }
-
-RULES:
-- respond in English
-- chapter count: ${chapterCount}
-- no markdown
-- no comments
 `;
 
   const userPrompt = `
@@ -1562,8 +1531,14 @@ ${combinedInput}
 
   const { response, data } = await callOpenAI(
     [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt }
+      {
+        role: "system",
+        content: systemPrompt
+      },
+      {
+        role: "user",
+        content: userPrompt
+      }
     ],
     0.75
   );
@@ -1571,13 +1546,13 @@ ${combinedInput}
   if (!response.ok) {
     return {
       ok: false,
-      status: response.status || 500,
-      error: data?.error || "OpenAI API error",
+      status: response.status,
+      error: "OpenAI API error",
       openai: data
     };
   }
 
-  const text = data?.choices?.[0]?.message?.content;
+  const text = data.choices?.[0]?.message?.content;
 
   if (!text) {
     return {
@@ -1630,10 +1605,6 @@ Zwróć WYŁĄCZNIE poprawny JSON w tym formacie:
   "exerciseText": "",
   "reflectionPrompt": ""
 }
-
-ZASADY:
-- odpowiadaj po polsku
-- nie używaj markdown
 `
       : `
 You are a premium workbook strategist.
@@ -1648,10 +1619,6 @@ Return ONLY valid JSON in this format:
   "exerciseText": "",
   "reflectionPrompt": ""
 }
-
-RULES:
-- respond in English
-- no markdown
 `;
 
   const userPrompt = `
@@ -1670,8 +1637,14 @@ ${combinedInput}
 
   const { response, data } = await callOpenAI(
     [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt }
+      {
+        role: "system",
+        content: systemPrompt
+      },
+      {
+        role: "user",
+        content: userPrompt
+      }
     ],
     0.75
   );
@@ -1679,13 +1652,13 @@ ${combinedInput}
   if (!response.ok) {
     return {
       ok: false,
-      status: response.status || 500,
-      error: data?.error || "OpenAI API error",
+      status: response.status,
+      error: "OpenAI API error",
       openai: data
     };
   }
 
-  const text = data?.choices?.[0]?.message?.content;
+  const text = data.choices?.[0]?.message?.content;
 
   if (!text) {
     return {
@@ -1778,14 +1751,6 @@ async function generateVariants({
   };
 }
 
-router.get("/health", (_req, res) => {
-  return res.status(200).json({
-    ok: true,
-    service: "api-router",
-    timestamp: new Date().toISOString()
-  });
-});
-
 router.get("/author/analyze", (_req, res) => {
   return res.status(200).json({
     ok: true,
@@ -1871,24 +1836,24 @@ router.get("/variants/selected/:sessionId", (req, res) => {
 });
 
 router.post("/author/analyze", async (req, res) => {
-  try {
-    const { linkedinInput, authorContext, sourceText } = req.body || {};
+  const { linkedinInput, authorContext, sourceText } = req.body || {};
 
-    if (!linkedinInput && !authorContext && !sourceText) {
-      return res.status(400).json({
-        ok: false,
-        error: "No input"
-      });
-    }
-
-    const combinedInput = mergeInputs({
-      linkedinInput,
-      authorContext,
-      sourceText
+  if (!linkedinInput && !authorContext && !sourceText) {
+    return res.status(400).json({
+      ok: false,
+      error: "No input"
     });
+  }
 
-    const detectedLanguage = detectLanguage(combinedInput);
+  const combinedInput = mergeInputs({
+    linkedinInput,
+    authorContext,
+    sourceText
+  });
 
+  const detectedLanguage = detectLanguage(combinedInput);
+
+  try {
     const result = await generatePositioning({
       combinedInput,
       detectedLanguage
@@ -1902,43 +1867,47 @@ router.post("/author/analyze", async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       ok: false,
-      error: err?.message || "Internal server error"
+      error: err.message
     });
   }
 });
 
 router.post("/generate-variants", async (req, res) => {
+  const {
+    linkedinInput,
+    authorContext,
+    sourceText,
+    options = {}
+  } = req.body || {};
+
+  if (!linkedinInput && !authorContext && !sourceText) {
+    return res.status(400).json({
+      ok: false,
+      error: "No input"
+    });
+  }
+
+  const combinedInput = mergeInputs({
+    linkedinInput,
+    authorContext,
+    sourceText
+  });
+
+  const detectedLanguage = options.language && options.language !== "auto"
+    ? options.language === "pl"
+      ? "polish"
+      : "english"
+    : detectLanguage(combinedInput);
+
+  const variantCount = clampVariantCount(options.variantCount || 3);
+  const sessionId = String(options.sessionId || createSessionId()).trim();
+  const inputHash = createInputHash({
+    linkedinInput,
+    authorContext,
+    sourceText
+  });
+
   try {
-    const { linkedinInput, authorContext, sourceText, options = {} } = req.body || {};
-
-    if (!linkedinInput && !authorContext && !sourceText) {
-      return res.status(400).json({
-        ok: false,
-        error: "No input"
-      });
-    }
-
-    const combinedInput = mergeInputs({
-      linkedinInput,
-      authorContext,
-      sourceText
-    });
-
-    const detectedLanguage =
-      options.language && options.language !== "auto"
-        ? options.language === "pl"
-          ? "polish"
-          : "english"
-        : detectLanguage(combinedInput);
-
-    const variantCount = clampVariantCount(options.variantCount || 3);
-    const sessionId = String(options.sessionId || createSessionId()).trim();
-    const inputHash = createInputHash({
-      linkedinInput,
-      authorContext,
-      sourceText
-    });
-
     const variantsResult = await generateVariants({
       combinedInput,
       detectedLanguage,
@@ -1968,148 +1937,139 @@ router.post("/generate-variants", async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       ok: false,
-      error: err?.message || "Internal server error"
+      error: err.message
     });
   }
 });
 
 router.post("/variants/select", async (req, res) => {
-  try {
-    const { sessionId, variant, variantId } = req.body || {};
-    const safeSessionId = String(sessionId || "").trim() || createSessionId();
+  const {
+    sessionId,
+    variant,
+    variantId
+  } = req.body || {};
 
-    if (!variant && !variantId) {
-      return res.status(400).json({
-        ok: false,
-        error: "Missing variant or variantId"
-      });
-    }
+  const safeSessionId = String(sessionId || "").trim() || createSessionId();
 
-    let payloadToSave = null;
+  if (!variant && !variantId) {
+    return res.status(400).json({
+      ok: false,
+      error: "Missing variant or variantId"
+    });
+  }
 
-    if (variant && typeof variant === "object") {
-      payloadToSave = buildSelectedPayloadFromVariant(variant, safeSessionId);
+  let payloadToSave = null;
 
-      const existingSession = variantSessionsStore.get(safeSessionId);
+  if (variant && typeof variant === "object") {
+    payloadToSave = buildSelectedPayloadFromVariant(variant, safeSessionId);
 
-      if (existingSession) {
-        const existingIndex = existingSession.variants.findIndex(
-          (item) => item.id === payloadToSave.id
-        );
+    const existingSession = variantSessionsStore.get(safeSessionId);
 
-        if (existingIndex >= 0) {
-          const previousVariant = existingSession.variants[existingIndex];
+    if (existingSession) {
+      const existingIndex = existingSession.variants.findIndex((item) => item.id === payloadToSave.id);
 
-          existingSession.variants[existingIndex] = {
-            ...previousVariant,
-            ...variant,
-            positioning: trimResultFields({
-              ...(variant.positioning || previousVariant.positioning || {})
-            }),
-            cover:
-              variant.cover ||
-              buildCoverPayload(
-                variant.positioning || previousVariant.positioning || {}
-              )
-          };
-        } else {
-          existingSession.variants.push({
-            id: payloadToSave.id,
-            strategyKey: payloadToSave.strategyKey,
-            strategyLabel: payloadToSave.strategyLabel,
-            createdAt: payloadToSave.createdAt,
-            hookScore: payloadToSave.hookScore,
-            quality: payloadToSave.quality,
-            positioning: payloadToSave.positioning,
-            cover: payloadToSave.cover
-          });
-        }
-
-        existingSession.selectedVariantId = payloadToSave.id;
-        variantSessionsStore.set(safeSessionId, existingSession);
-      }
-    } else {
-      const foundVariant = getVariantByIdFromSession(safeSessionId, variantId);
-
-      if (!foundVariant) {
-        return res.status(404).json({
-          ok: false,
-          error:
-            "Variant not found in session. Send full variant object or valid sessionId + variantId."
+      if (existingIndex >= 0) {
+        existingSession.variants[existingIndex] = {
+          ...existingSession.variants[existingIndex],
+          ...variant,
+          positioning: trimResultFields({
+            ...(variant.positioning || existingSession.variants[existingIndex].positioning || {})
+          }),
+          cover: variant.cover || buildCoverPayload(
+            variant.positioning || existingSession.variants[existingIndex].positioning || {}
+          )
+        };
+      } else {
+        existingSession.variants.push({
+          id: payloadToSave.id,
+          strategyKey: payloadToSave.strategyKey,
+          strategyLabel: payloadToSave.strategyLabel,
+          createdAt: payloadToSave.createdAt,
+          hookScore: payloadToSave.hookScore,
+          quality: payloadToSave.quality,
+          positioning: payloadToSave.positioning,
+          cover: payloadToSave.cover
         });
       }
 
-      payloadToSave = buildSelectedPayloadFromVariant(foundVariant, safeSessionId);
-
-      const existingSession = variantSessionsStore.get(safeSessionId);
-      if (existingSession) {
-        existingSession.selectedVariantId = payloadToSave.id;
-        variantSessionsStore.set(safeSessionId, existingSession);
-      }
+      existingSession.selectedVariantId = payloadToSave.id;
+      variantSessionsStore.set(safeSessionId, existingSession);
     }
+  } else {
+    const foundVariant = getVariantByIdFromSession(safeSessionId, variantId);
 
-    selectedVariantsStore.set(safeSessionId, payloadToSave);
-
-    return res.status(200).json({
-      ok: true,
-      sessionId: safeSessionId,
-      selected: payloadToSave
-    });
-  } catch (err) {
-    return res.status(500).json({
-      ok: false,
-      error: err?.message || "Internal server error"
-    });
-  }
-});
-
-router.post("/generate-preview", async (req, res) => {
-  try {
-    const {
-      linkedinInput,
-      authorContext,
-      sourceText,
-      positioning,
-      selectedVariant,
-      sessionId,
-      options = {}
-    } = req.body || {};
-
-    if (
-      !linkedinInput &&
-      !authorContext &&
-      !sourceText &&
-      !positioning &&
-      !selectedVariant &&
-      !sessionId
-    ) {
-      return res.status(400).json({
+    if (!foundVariant) {
+      return res.status(404).json({
         ok: false,
-        error: "No input"
+        error: "Variant not found in session. Send full variant object or valid sessionId + variantId."
       });
     }
 
-    const combinedInput = mergeInputs({
-      linkedinInput,
-      authorContext,
-      sourceText
+    payloadToSave = buildSelectedPayloadFromVariant(foundVariant, safeSessionId);
+
+    const existingSession = variantSessionsStore.get(safeSessionId);
+    if (existingSession) {
+      existingSession.selectedVariantId = payloadToSave.id;
+      variantSessionsStore.set(safeSessionId, existingSession);
+    }
+  }
+
+  selectedVariantsStore.set(safeSessionId, payloadToSave);
+
+  return res.status(200).json({
+    ok: true,
+    sessionId: safeSessionId,
+    selected: payloadToSave
+  });
+});
+
+router.post("/generate-preview", async (req, res) => {
+  const {
+    linkedinInput,
+    authorContext,
+    sourceText,
+    positioning,
+    selectedVariant,
+    sessionId,
+    options = {}
+  } = req.body || {};
+
+  if (
+    !linkedinInput &&
+    !authorContext &&
+    !sourceText &&
+    !positioning &&
+    !selectedVariant &&
+    !sessionId
+  ) {
+    return res.status(400).json({
+      ok: false,
+      error: "No input"
     });
+  }
 
-    const detectedLanguage =
-      options.language && options.language !== "auto"
-        ? options.language === "pl"
-          ? "polish"
-          : "english"
-        : detectLanguage(
-            combinedInput || JSON.stringify(positioning || selectedVariant || {})
-          );
+  const combinedInput = mergeInputs({
+    linkedinInput,
+    authorContext,
+    sourceText
+  });
 
-    const includeOutline = options.includeOutline !== false;
-    const includeSample = options.includeSample !== false;
-    const includeDecisionPaths = options.includeDecisionPaths !== false;
-    const useSavedSelection = options.useSavedSelection === true;
-    const chapterCount = clampChapterCount(options.chapterCount || 7);
+  const detectedLanguage = options.language && options.language !== "auto"
+    ? options.language === "pl"
+      ? "polish"
+      : "english"
+    : detectLanguage(
+        combinedInput ||
+        JSON.stringify(positioning || selectedVariant || {})
+      );
 
+  const includeOutline = options.includeOutline !== false;
+  const includeSample = options.includeSample !== false;
+  const includeDecisionPaths = options.includeDecisionPaths !== false;
+  const useSavedSelection = options.useSavedSelection === true;
+  const chapterCount = clampChapterCount(options.chapterCount || 7);
+
+  try {
     let finalPositioning = null;
     let hookScore = null;
     let quality = null;
@@ -2187,24 +2147,15 @@ router.post("/generate-preview", async (req, res) => {
     } else {
       trimResultFields(finalPositioning);
 
-      const titleRepaired = await repairTitleIfNeeded(
-        finalPositioning,
-        detectedLanguage
-      );
+      const titleRepaired = await repairTitleIfNeeded(finalPositioning, detectedLanguage);
       finalPositioning = titleRepaired.parsed;
       trimResultFields(finalPositioning);
 
-      const repairedHook = await repairHookIfNeeded(
-        finalPositioning,
-        detectedLanguage
-      );
+      const repairedHook = await repairHookIfNeeded(finalPositioning, detectedLanguage);
       finalPositioning = repairedHook.parsed;
       hookScore = repairedHook.hookScore;
 
-      finalPositioning = await repairSubtitleIfNeeded(
-        finalPositioning,
-        detectedLanguage
-      );
+      finalPositioning = await repairSubtitleIfNeeded(finalPositioning, detectedLanguage);
       trimResultFields(finalPositioning);
 
       quality = qualityGate({
@@ -2275,7 +2226,7 @@ router.post("/generate-preview", async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       ok: false,
-      error: err?.message || "Internal server error"
+      error: err.message
     });
   }
 });
